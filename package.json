@@ -1,0 +1,14 @@
+{
+  "name": "mce-academy",
+  "private": true,
+  "version": "1.0.0",
+  "description": "MCE Academy — plateforme de formation multi-entreprises (React + Tailwind + Node.js + Supabase)",
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix frontend install",
+    "seed": "npm --prefix server run seed",
+    "dev:api": "npm --prefix server run dev",
+    "dev:web": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix server start"
+  }
+}
