@@ -12,7 +12,8 @@ export default function Login() {
   const { signIn, session, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState('');
+  const created = location.state?.created; // arrivée depuis l'inscription
+  const [email, setEmail] = useState(created?.email || '');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -59,6 +60,17 @@ export default function Login() {
             {forgot ? 'Recevez un lien pour choisir un nouveau mot de passe.' : 'Connectez-vous à votre espace de formation.'}
           </p>
 
+          {created && !forgot && (
+            <div className="mt-6 flex gap-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800 ring-1 ring-emerald-200">
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+              <p>
+                <b>Votre compte a bien été créé{created.company ? ` chez ${created.company}` : ''} !</b>{' '}
+                {created.confirmEmail
+                  ? <>Cliquez d’abord sur le lien envoyé à <b>{created.email}</b>, puis connectez-vous.</>
+                  : 'Connectez-vous avec votre mot de passe pour passer votre test de profil.'}
+              </p>
+            </div>
+          )}
           <form onSubmit={submit} className="mt-8 space-y-5">
             <div>
               <label className="label" htmlFor="email">Email professionnel</label>

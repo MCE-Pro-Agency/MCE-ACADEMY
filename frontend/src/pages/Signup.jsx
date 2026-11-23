@@ -4,7 +4,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Building2, Lock, Mail, User } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { db } from '../lib/db';
 import { Spinner } from '../components/ui';
 import Logo from '../components/layout/Logo';
@@ -15,7 +14,6 @@ export default function Signup() {
   const [form, setForm] = useState({ full_name: '', email: '', password: '', confirm: '', join_code: (params.get('code') || '').toUpperCase() });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [checkEmail, setCheckEmail] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: k === 'join_code' ? e.target.value.toUpperCase() : e.target.value });
 
   const submit = async (e) => {
@@ -38,28 +36,23 @@ export default function Signup() {
         emailRedirectTo: `${window.location.origin}/login`,
       },
     });
+    if (err) {
+      setLoading(false);
+      return setError(err.message.includes('registered') ? 'Un compte existe déjà avec cet email : connectez-vous.' : err.message);
+    }
+    // Le compte est créé : retour à la page de connexion avec un message de confirmation
+    if (data.session) await db.auth.signOut();
     setLoading(false);
-    if (err) return setError(err.message.includes('registered') ? 'Un compte existe déjà avec cet email : connectez-vous.' : err.message);
-    if (!data.session) return setCheckEmail(true); // confirmation par email activée dans Supabase
-    toast.success(`Bienvenue chez ${companyName} !`);
-    navigate('/app/mon-profil', { replace: true });
+    navigate('/login', { replace: true, state: { created: { email: form.email.trim(), company: companyName, confirmEmail: !data.session } } });
   };
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 px-6 py-8">
       <Logo />
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
-        {checkEmail ? (
-          <div className="card p-8 text-center">
-            <p className="text-4xl">📬</p>
-            <h1 className="mt-3 text-2xl font-bold text-navy-900">Vérifiez votre boîte mail</h1>
-            <p className="mt-2 text-sm text-slate-500">Un lien de confirmation a été envoyé à <b>{form.email}</b>. Cliquez dessus, puis connectez-vous pour passer votre test de profil.</p>
-            <Link to="/login" className="btn-primary mt-6">Aller à la connexion</Link>
-          </div>
-        ) : (
           <div className="card p-8">
             <h1 className="text-2xl font-bold text-navy-900">Créer mon compte</h1>
-            <p className="mt-1 text-sm text-slate-500">Inscrivez-vous, puis passez votre <b>test de profil professionnel</b> (environ 25 minutes).</p>
+            <p className="mt-1 text-sm text-slate-500">Inscrivez-vous, puis passez votre <b>test de profil professionnel</b> (20 minutes chronométrées).</p>
             <form onSubmit={submit} className="mt-6 space-y-4">
               <Field icon={Building2} label="Code de votre entreprise" hint="Donné par votre formateur">
                 <input required className="input pl-10 font-mono tracking-widest" placeholder="EX. VIGILUS2026" value={form.join_code} onChange={set('join_code')} />
@@ -85,7 +78,6 @@ export default function Signup() {
             </form>
             <p className="mt-6 text-center text-sm text-slate-500">Déjà inscrit ? <Link to="/login" className="font-semibold text-brand-600">Se connecter</Link></p>
           </div>
-        )}
       </div>
       <Link to="/" className="text-center text-xs text-slate-400 hover:text-navy-700">← Retour au site</Link>
     </div>
