@@ -17,7 +17,7 @@ create unique index if not exists companies_join_code_uq on public.companies (up
 
 -- Un code pour chaque entreprise qui n'en a pas encore (8 caractères sans 0/O/1/I)
 update public.companies
-set join_code = upper(substr(translate(encode(gen_random_bytes(12), 'base64'), '+/=0O1Il', 'ABCDEFGH'), 1, 8))
+set join_code = upper(substr(md5(random()::text || id::text), 1, 8))
 where join_code is null;
 
 -- Vérification du code avant l'inscription (appelable sans être connecté).
