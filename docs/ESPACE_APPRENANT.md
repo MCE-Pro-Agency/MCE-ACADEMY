@@ -6,8 +6,12 @@ Ce guide s'adresse à la personne qui gère l'espace apprenant de MCE Academy. I
 
 ## 1. État actuel
 
-- **Seul le test de profil professionnel est ouvert** pour les apprenants VIGILUS : c'est le mode « test uniquement ». À la connexion, un apprenant arrive directement sur son test. Toutes les autres pages le renvoient vers ce test.
-- La formation **VIGILUS IMPACT** est entièrement rédigée mais **invisible** pour les apprenants tant que l'espace complet n'est pas ouvert. Elle compte 9 modules (lundi → vendredi, puis J+7, J+14, J+21, J+30), avec leçons, missions et quiz.
+**Répartition** : l'espace Apprenant ne contient plus que le **test de profil professionnel** et la page « Mon compte ». Les formations, modules, programme, mémos, documents et exercices côté apprenant sont développés par l'espace Formateur (Marie).
+
+- À la connexion, un apprenant arrive directement sur son test. Toute autre adresse `/app/...` le renvoie vers ce test.
+- Le formateur et l'admin voient le test de chaque apprenant : *Profils professionnels* et onglet *Profil professionnel* de la fiche apprenant.
+- Les anciennes pages apprenant (modules, leçons, quiz, programme, documents, mémos, notes, attestation) ont été retirées. Elles restent disponibles dans l'historique Git (commit `4580c6d`, branche `espace-apprenant`) et peuvent servir de base à l'espace Formateur.
+- Côté serveur, rien n'a été retiré : cours, leçons, quiz, exercices, progression et documents fonctionnent toujours par l'API. La formation **VIGILUS IMPACT** (9 modules) est en base.
 - Les comptes de démonstration servent aux tests. Ils sont à supprimer avant d'inviter les vrais participants.
 
 | Rôle | Email | Mot de passe |
@@ -26,7 +30,7 @@ Ce guide s'adresse à la personne qui gère l'espace apprenant de MCE Academy. I
 | Mode | Ce que voit l'apprenant |
 |---|---|
 | 🧭 **Test uniquement** | Son test de profil, et rien d'autre |
-| 📚 **Espace complet** | Programme, modules ouverts, mémos, documents, notes |
+| 📚 **Espace complet** | Aujourd'hui, rien de plus côté écran (les pages de formation ont été retirées). L'API autorise alors l'apprenant à lire les cours publiés : à utiliser quand l'espace Formateur aura livré les nouvelles pages |
 
 Le même encadré indique combien d'apprenants ont terminé leur test.
 Ce réglage est enregistré dans `companies.learner_space` (`'test'` ou `'complet'`). L'apprenant doit recharger la page pour voir le changement.
@@ -67,16 +71,11 @@ Fiche apprenant → *Profil professionnel* → « Ouvrir une nouvelle passation 
 
 ## 4. Où se trouve quoi (code)
 
-### Pages de l'apprenant — `frontend/src/pages/learner/`
+### Pages de l'apprenant
 | Page | Route | Rôle |
 |---|---|---|
-| `ProfilPro.jsx` | `/app/mon-profil` | Test de profil et rapport (seule page ouverte en mode test) |
-| `Programme.jsx` | `/app/programme` | Tableau « Mon programme » (jour → module → état) |
-| `Catalog.jsx`, `CourseDetail.jsx` | `/app/catalogue`, `/app/cours/:id` | Mes modules, avec téléchargement de chaque contenu |
-| `LessonPlayer.jsx` | `/app/cours/:id/lecon/:id` | Leçon, quiz, mission |
-| `Documents.jsx` | `/app/documents` | Mes documents |
-| `Memos.jsx` | `/app/memos` | Les 20 mémos C.L.E.F. |
-| `Grades.jsx`, `Certificate.jsx` | `/app/notes`, `/app/certificat/:id` | Notes et attestation |
+| `pages/learner/ProfilPro.jsx` | `/app/mon-profil` | Test de profil et rapport |
+| `pages/Profile.jsx` | `/app/profil` | Mon compte (nom, poste, photo, mot de passe) |
 
 ### Briques partagées
 | Fichier | Rôle |
@@ -84,8 +83,7 @@ Fiche apprenant → *Profil professionnel* → « Ouvrir une nouvelle passation 
 | `lib/learnerSpace.js` + `components/LearnerGate.jsx` | Mode « test uniquement » : pages autorisées et redirection |
 | `components/LearnerSpaceSwitch.jsx` | L'interrupteur test / complet (formateur, admin) |
 | `lib/stores.js` | Profils (`profilStore`) et déblocage des modules (`moduleStore`, `moduleLockState`) |
-| `lib/pdf.js` | Tous les PDF : leçon, mission, quiz, mémo, rapport de profil, attestation |
-| `components/ModuleDownloads.jsx` | Téléchargements d'un module, un par un |
+| `lib/pdf.js` | PDF du rapport de profil ; contient aussi les générateurs leçon, quiz, mémo et attestation, réutilisables par l'espace Formateur |
 | `components/profil/` | Questionnaire, rapport et graphiques du profil |
 | `data/profilModel.js` | Le test : 10 dimensions, questions, calcul des scores, textes du rapport |
 | `data/ressources.js` | Les 20 mémos et les 5 thèmes |

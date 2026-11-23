@@ -11,22 +11,19 @@ Elle fonctionne comme Udemy ou OpenClassrooms, mais en **multi-entreprises** : c
 
 | Rôle | Ce qu'il peut faire |
 |---|---|
-| **Apprenant** | Se connecte **uniquement** à l'espace de son entreprise · suit les cours (texte, vidéo, document) · passe les quiz (corrigés automatiquement) · rend ses exercices · voit ses barres de progression, ses notes et le temps passé · obtient un certificat à 100 % |
+| **Apprenant** | Se connecte **uniquement** à l'espace de son entreprise · passe son **test de profil professionnel** (rapport avec graphiques, téléchargeable en PDF). Les pages de formation côté apprenant (cours, quiz, exercices, programme, documents) sont en cours de développement dans l'espace Formateur ; l'API les gère déjà |
 | **Formateur** | Gère **uniquement** l'espace de son entreprise : apprenants (ajout, import CSV, désactivation, nouveau mot de passe), cours, modules, leçons, quiz, inscriptions, corrections notées sur 20, annonces · voit **les notes et le temps de connexion de chacun** |
 | **Administrateur** | Gère **toute la plateforme** : crée les entreprises (et leur formateur référent), tous les utilisateurs et tous les rôles, ouvre l'espace de n'importe quelle entreprise, voit les statistiques globales |
 
 **Fonctionnalités clés**
 - Page d'accueil, connexion, mot de passe oublié
-- Catalogue avec recherche, filtres et barres de progression
-- Lecteur de cours : programme latéral, leçon suivante/précédente, progression en temps réel
 - 5 types de leçons : **Leçon** (Markdown), **Vidéo** (YouTube, Vimeo, MP4), **Document** (PDF intégré), **Quiz**, **Exercice**
 - Quiz corrigés **côté serveur** (les bonnes réponses ne sont jamais envoyées aux apprenants)
 - Exercices notés /20 avec retour du formateur, ou renvoyés « à reprendre »
 - Suivi automatique du **temps de connexion** (une pulsation par minute, uniquement quand l'onglet est visible) et du temps par leçon
 - Tableaux de bord avec graphiques : activité, progression par cours, meilleurs apprenants, apprenants à relancer
 - Export CSV des apprenants, import CSV en masse avec identifiants générés
-- Certificat de réussite imprimable / PDF
-- Annonces du formateur sur le tableau de bord des apprenants
+- Test de profil professionnel : questionnaire, rapport, PDF, vue formateur pour chaque apprenant
 - Interface responsive (ordinateur, tablette, mobile)
 
 **Charte graphique** : bleu clair `#2B9FDC` (logo), bleu foncé `#112842`, blanc, noir et une touche de **doré** `#C9A227` (certificats, distinctions). Couleurs modifiables dans `frontend/tailwind.config.js`.

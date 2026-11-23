@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Plus, GraduationCap, Users, CheckCircle2, Pencil, Eye, Trash2, BookOpen } from 'lucide-react';
+import { Plus, GraduationCap, Users, CheckCircle2, Pencil, Trash2, BookOpen } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/db';
 import { Badge, EmptyState, Field, Modal, PageLoader, ProgressBar, Toggle } from '../../components/ui';
@@ -99,7 +99,6 @@ export default function TrainerCourses() {
                   <div className="mt-auto flex items-center justify-between gap-2 pt-5">
                     <Toggle checked={c.is_published} onChange={() => togglePublish(c)} label={c.is_published ? 'Publié' : 'Publier'} />
                     <div className="flex gap-1">
-                      <Link to={`/app/cours/${c.id}`} className="btn-ghost btn-sm" title="Aperçu"><Eye className="h-4 w-4" /></Link>
                       <button onClick={() => remove(c)} className="btn-ghost btn-sm text-red-500 hover:bg-red-50" title="Supprimer"><Trash2 className="h-4 w-4" /></button>
                       <Link to={`/formateur/cours/${c.id}`} className="btn-primary btn-sm"><Pencil className="h-3.5 w-3.5" /> Éditer</Link>
                     </div>

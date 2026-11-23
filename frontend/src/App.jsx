@@ -9,16 +9,7 @@ import ResetPassword from './pages/ResetPassword';
 import NotFound from './pages/NotFound';
 import Profile from './pages/Profile';
 
-import LearnerDashboard from './pages/learner/Dashboard';
-import Catalog from './pages/learner/Catalog';
-import CourseDetail from './pages/learner/CourseDetail';
-import LessonPlayer from './pages/learner/LessonPlayer';
-import Grades from './pages/learner/Grades';
-import Certificate from './pages/learner/Certificate';
 import ProfilPro from './pages/learner/ProfilPro';
-import Memos from './pages/learner/Memos';
-import Programme from './pages/learner/Programme';
-import Documents from './pages/learner/Documents';
 import ProfilsSuivi from './pages/shared/ProfilsSuivi';
 
 import TrainerDashboard from './pages/trainer/Dashboard';
@@ -43,21 +34,16 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/reinitialiser" element={<ResetPassword />} />
 
-      {/* Espace apprenant (accessible aussi aux formateurs/admin pour l'aperçu) */}
+      {/* Espace apprenant : test de profil professionnel uniquement.
+          Les formations, modules, programme et exercices sont développés dans l'espace Formateur
+          (version précédente des pages apprenant : commit 4580c6d de la branche espace-apprenant). */}
       <Route element={<ProtectedRoute roles={['learner', 'trainer', 'admin']} />}>
        <Route element={<LearnerGate />}>
-        <Route path="/app/cours/:courseId/lecon/:lessonId" element={<LessonPlayer />} />
-        <Route path="/app/certificat/:courseId" element={<Certificate />} />
         <Route element={<AppLayout area="learner" />}>
-          <Route path="/app" element={<LearnerDashboard />} />
-          <Route path="/app/catalogue" element={<Catalog />} />
-          <Route path="/app/cours/:courseId" element={<CourseDetail />} />
-          <Route path="/app/notes" element={<Grades />} />
+          <Route path="/app" element={<Navigate to="/app/mon-profil" replace />} />
           <Route path="/app/mon-profil" element={<ProfilPro />} />
-          <Route path="/app/memos" element={<Memos />} />
-          <Route path="/app/programme" element={<Programme />} />
-          <Route path="/app/documents" element={<Documents />} />
           <Route path="/app/profil" element={<Profile />} />
+          <Route path="/app/*" element={<Navigate to="/app/mon-profil" replace />} />
         </Route>
        </Route>
       </Route>

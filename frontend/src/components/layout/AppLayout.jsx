@@ -13,18 +13,9 @@ import { isTestOnly } from '../../lib/learnerSpace';
 
 /* Menus par espace, regroupés en rubriques explicites */
 const NAV = {
+  // Espace apprenant : le test de profil uniquement (le reste est porté par l'espace Formateur)
   learner: [
-    { title: 'Mon espace', items: [{ to: '/app', label: 'Tableau de bord', icon: LayoutDashboard, end: true }] },
-    { title: 'Apprendre', items: [
-      { to: '/app/programme', label: 'Mon programme', icon: CalendarDays },
-      { to: '/app/catalogue', label: 'Mes modules', icon: BookOpen },
-      { to: '/app/documents', label: 'Mes documents', icon: FolderOpen },
-      { to: '/app/memos', label: 'Mes mémos', icon: BookMarked },
-    ] },
-    { title: 'Mon évolution', items: [
-      { to: '/app/mon-profil', label: 'Mon profil professionnel', icon: Brain },
-      { to: '/app/notes', label: 'Mes notes & certificats', icon: Award },
-    ] },
+    { title: 'Mon espace', items: [{ to: '/app/mon-profil', label: 'Mon test de profil', icon: Brain }] },
   ],
   trainer: [
     { title: 'Pilotage', items: [{ to: '/formateur', label: 'Tableau de bord', icon: LayoutDashboard, end: true }] },

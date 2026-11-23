@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeft, Plus, ChevronUp, ChevronDown, Pencil, Trash2, Eye, Save, Image as ImageIcon, Upload,
+  ArrowLeft, Plus, ChevronUp, ChevronDown, Pencil, Trash2, Save, Image as ImageIcon, Upload,
   LayoutList, Info, Users, CheckCircle2, GripVertical, X,
 } from 'lucide-react';
 import { db, uploadMedia } from '../../lib/db';
@@ -74,7 +74,6 @@ export default function CourseEditor() {
           <p className="page-subtitle">{modules.length} modules · {totalLessons} leçons</p>
         </div>
         <div className="flex gap-2">
-          <Link to={`/app/cours/${course.id}`} className="btn-secondary"><Eye className="h-4 w-4" /> Aperçu apprenant</Link>
           <button
             className={course.is_published ? 'btn-secondary' : 'btn-brand'}
             onClick={async () => {
