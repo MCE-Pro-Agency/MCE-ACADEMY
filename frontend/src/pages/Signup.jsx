@@ -3,7 +3,7 @@
    supabase/002_test_profil.sql) : le code est vérifié côté serveur, jamais côté navigateur. */
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Building2, Briefcase, Lock, Mail, User } from 'lucide-react';
+import { ArrowRight, Building2, Lock, Mail, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '../lib/db';
 import { Spinner } from '../components/ui';
@@ -12,7 +12,7 @@ import Logo from '../components/layout/Logo';
 export default function Signup() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ full_name: '', email: '', job_title: '', password: '', confirm: '', join_code: (params.get('code') || '').toUpperCase() });
+  const [form, setForm] = useState({ full_name: '', email: '', password: '', confirm: '', join_code: (params.get('code') || '').toUpperCase() });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [checkEmail, setCheckEmail] = useState(false);
@@ -34,7 +34,7 @@ export default function Signup() {
       email: form.email.trim(),
       password: form.password,
       options: {
-        data: { full_name: form.full_name.trim(), job_title: form.job_title.trim(), join_code: form.join_code.trim() },
+        data: { full_name: form.full_name.trim(), join_code: form.join_code.trim() },
         emailRedirectTo: `${window.location.origin}/login`,
       },
     });
@@ -62,16 +62,13 @@ export default function Signup() {
             <p className="mt-1 text-sm text-slate-500">Inscrivez-vous, puis passez votre <b>test de profil professionnel</b> (environ 25 minutes).</p>
             <form onSubmit={submit} className="mt-6 space-y-4">
               <Field icon={Building2} label="Code de votre entreprise" hint="Donné par votre formateur">
-                <input required className="input pl-10 font-mono tracking-widest" placeholder="EX. VIGI2026" value={form.join_code} onChange={set('join_code')} />
+                <input required className="input pl-10 font-mono tracking-widest" placeholder="EX. VIGILUS2026" value={form.join_code} onChange={set('join_code')} />
               </Field>
               <Field icon={User} label="Prénom et nom">
                 <input required className="input pl-10" autoComplete="name" value={form.full_name} onChange={set('full_name')} />
               </Field>
               <Field icon={Mail} label="Email professionnel">
                 <input required type="email" className="input pl-10" autoComplete="email" placeholder="prenom.nom@entreprise.com" value={form.email} onChange={set('email')} />
-              </Field>
-              <Field icon={Briefcase} label="Poste (facultatif)">
-                <input className="input pl-10" value={form.job_title} onChange={set('job_title')} placeholder="Ex. Commercial terrain" />
               </Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field icon={Lock} label="Mot de passe">
