@@ -13,7 +13,7 @@ const FEATURES = [
   { icon: GraduationCap, title: 'Parcours structurés', text: 'Cours, modules et leçons : textes, vidéos, documents, quiz et exercices pratiques.' },
   { icon: BarChart3, title: 'Progression visible', text: 'Barres de progression, temps passé, notes et certificats : chacun voit ses progrès.' },
   { icon: ClipboardCheck, title: 'Évaluation & feedback', text: 'Quiz corrigés automatiquement, exercices notés sur 20 avec retour personnalisé du formateur.' },
-  { icon: Brain, title: 'Profil professionnel', text: 'Un test de 25 minutes qui dresse le portrait de chaque apprenant : 10 compétences, style, motivations et plan d’action.' },
+  { icon: Brain, title: 'Profil professionnel', text: 'Un test chronométré de 20 minutes qui dresse le portrait de chaque apprenant : 10 compétences, style, motivations et plan d’action.' },
   { icon: ShieldCheck, title: 'Rôles & sécurité', text: 'Apprenant, formateur, administrateur : chacun accède uniquement à ce qui le concerne.' },
 ];
 

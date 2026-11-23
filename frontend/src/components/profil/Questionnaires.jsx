@@ -1,6 +1,8 @@
-/* Questionnaire du profil professionnel MCE (≈ 25 min, 13 étapes) */
-import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+/* Questionnaire du profil professionnel MCE (20 min chronométrées + 3 min de rab, 13 étapes).
+   Le chrono part de draft.timerStart, enregistré dans Supabase : recharger la page ou
+   quitter le test ne l'arrête pas. À la fin du temps, le test est envoyé avec les réponses données. */
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, Sparkles, Timer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PM, PROFIL_STEPS, stepIds, scoreProfil, DIM_COLORS, CONTEXT, PREFERENCES, AXES } from '../../data/profilModel';
 import { profilStore } from '../../lib/stores';
@@ -25,9 +27,56 @@ function Choice({ selected, onClick, children, color = '#112842' }) {
   );
 }
 
+const MAIN_MS = PM.duration * 60000;
+const TOTAL_MS = (PM.duration + PM.grace) * 60000;
+
+/** Temps restant (ms) avant l'envoi automatique ; négatif si dépassé. */
+export const profilTimeLeft = (draft) => (draft?.timerStart ? TOTAL_MS - (Date.now() - new Date(draft.timerStart).getTime()) : TOTAL_MS);
+
+/** Calcule et enregistre la passation (fin normale ou temps écoulé). */
+export function finishProfil(userId, draft, timedOut = false) {
+  const elapsed = Date.now() - new Date(draft.timerStart || draft.startedAt).getTime();
+  const minutes = Math.min(PM.duration + PM.grace, Math.max(1, Math.round(elapsed / 60000)));
+  const result = scoreProfil(draft.answers, minutes, { timedOut });
+  return profilStore.addRun(userId, { date: new Date().toISOString(), minutes, version: PM.version, answers: draft.answers, result, timed_out: timedOut });
+}
+
+const fmt = (ms) => {
+  const t = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+};
+
 export function ProfilQuestionnaire({ userId, onDone, onCancel }) {
   const stored = profilStore.get(userId);
-  const [d, setD] = useState(() => stored.draft || { answers: {}, pos: 0, startedAt: new Date().toISOString() });
+  const [d, setD] = useState(() => {
+    const draft = stored.draft || { answers: {}, pos: 0, startedAt: new Date().toISOString() };
+    // Brouillons d'avant le chrono : le chrono démarre maintenant
+    return draft.timerStart ? draft : { ...draft, timerStart: new Date().toISOString() };
+  });
+  const [now, setNow] = useState(Date.now());
+  const sent = useRef(false);
+  useEffect(() => {
+    if (!stored.draft?.timerStart) profilStore.saveDraft(userId, d);
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const elapsed = now - new Date(d.timerStart).getTime();
+  const inGrace = elapsed >= MAIN_MS;
+  const left = (inGrace ? TOTAL_MS : MAIN_MS) - elapsed;
+  // Rythme conseillé : où devrait en être l'apprenant après ce temps
+  const late = !inGrace && d.pos + 1 < (elapsed / MAIN_MS) * PROFIL_STEPS.length;
+
+  const finish = (timedOut) => {
+    if (sent.current) return;
+    sent.current = true;
+    finishProfil(userId, d, timedOut);
+    toast.success(timedOut ? 'Temps écoulé : votre profil a été calculé avec vos réponses.' : 'Votre profil est prêt ! 🎉');
+    onDone();
+  };
+  useEffect(() => {
+    if (elapsed >= TOTAL_MS) finish(true);
+  }, [now]); // eslint-disable-line react-hooks/exhaustive-deps
   const st = PROFIL_STEPS[d.pos];
   const pct = Math.round((d.pos / PROFIL_STEPS.length) * 100);
   const meta = st.type === 'module' ? { title: st.dim.title, sub: st.dim.definition, color: DIM_COLORS[st.dim.id] } : STEP_META[st.type];
@@ -51,11 +100,7 @@ export function ProfilQuestionnaire({ userId, onDone, onCancel }) {
       update({ ...d, pos: d.pos + 1 });
       return top();
     }
-    const minutes = Math.max(1, Math.round((Date.now() - new Date(d.startedAt)) / 60000));
-    const result = scoreProfil(d.answers, minutes);
-    profilStore.addRun(userId, { date: new Date().toISOString(), minutes, version: PM.version, answers: d.answers, result });
-    toast.success('Votre profil est prêt ! 🎉');
-    onDone();
+    finish(false);
   };
 
   return (
@@ -64,6 +109,14 @@ export function ProfilQuestionnaire({ userId, onDone, onCancel }) {
         <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/80">
           <span>Étape {d.pos + 1} sur {PROFIL_STEPS.length}</span>
           <span>{pct} % · enregistré automatiquement</span>
+        </div>
+        <div className={cn('mt-3 flex flex-wrap items-center gap-3 rounded-2xl px-4 py-2 ring-1', inGrace ? 'animate-pulse bg-red-500/90 ring-red-300' : left < 60000 ? 'bg-red-500/80 ring-red-300' : left < 5 * 60000 ? 'bg-amber-500/80 ring-amber-200' : 'bg-white/10 ring-white/20')}>
+          <Timer className="h-5 w-5" />
+          <span className="font-mono text-2xl font-extrabold tabular-nums">{fmt(left)}</span>
+          <span className="text-xs font-semibold text-white/90">
+            {inGrace ? `Temps supplémentaire (${PM.grace} min) : le test sera envoyé automatiquement` : late ? 'Un peu en retard : répondez spontanément' : 'Dans les temps'}
+          </span>
+          {inGrace && <button onClick={() => finish(true)} className="ml-auto rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-red-700">Terminer maintenant</button>}
         </div>
         <h2 className="mt-2 text-2xl font-extrabold">{meta.title}</h2>
         <p className="mt-1 text-sm text-white/80">{meta.sub}</p>
@@ -165,7 +218,7 @@ export function ProfilQuestionnaire({ userId, onDone, onCancel }) {
         )}
 
         <div className="flex items-center justify-between gap-2 pt-2">
-          <button onClick={() => move(-1)} className="btn-secondary"><ArrowLeft className="h-4 w-4" /> {d.pos === 0 ? 'Plus tard' : 'Précédent'}</button>
+          <button onClick={() => move(-1)} className="btn-secondary"><ArrowLeft className="h-4 w-4" /> {d.pos === 0 ? 'Plus tard (le chrono continue)' : 'Précédent'}</button>
           <button onClick={() => move(1)} className="btn-brand px-6">
             {d.pos === PROFIL_STEPS.length - 1 ? <><Sparkles className="h-4 w-4" /> Découvrir mon profil</> : <>Continuer <ArrowRight className="h-4 w-4" /></>}
           </button>

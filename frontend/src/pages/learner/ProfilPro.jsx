@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Brain, CheckCircle2, Clock, RotateCcw, Layers, Users, Target, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { profilStore, profilDone, useLocalStoreVersion } from '../../lib/stores';
 import { PM, PROFIL_STEPS } from '../../data/profilModel';
 import ProfilReport from '../../components/profil/ProfilReport';
 import ProfilDownload from '../../components/profil/ProfilDownload';
-import { ProfilQuestionnaire } from '../../components/profil/Questionnaires';
+import { ProfilQuestionnaire, finishProfil, profilTimeLeft } from '../../components/profil/Questionnaires';
 
 export default function ProfilPro() {
   const { profile, company, isLearner } = useAuth();
@@ -16,6 +16,12 @@ export default function ProfilPro() {
   const done = profilDone(p);
   const canTake = !done || p.retake;
 
+  // Test commencé puis quitté : si le temps est écoulé entre-temps, il est envoyé à l'ouverture de la page
+  const expired = Boolean(p.draft?.timerStart) && profilTimeLeft(p.draft) <= 0;
+  useEffect(() => {
+    if (expired && !taking) finishProfil(profile.id, p.draft, true);
+  }, [expired, taking]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (taking) return <div className="mx-auto max-w-4xl"><ProfilQuestionnaire userId={profile.id} onDone={() => setTaking(false)} onCancel={() => setTaking(false)} /></div>;
 
   return (
@@ -24,7 +30,7 @@ export default function ProfilPro() {
         <div className="flex items-start gap-3 rounded-2xl bg-brand-50 p-4 text-sm text-navy-800 ring-1 ring-brand-100">
           <span className="text-xl">🧭</span>
           <p>
-            <b>Bienvenue {profile.full_name?.split(' ')[0]} !</b> Pour commencer, votre seule étape est ce <b>test de profil professionnel</b> (environ 25 minutes, enregistré au fur et à mesure).
+            <b>Bienvenue {profile.full_name?.split(' ')[0]} !</b> Pour commencer, votre seule étape est ce <b>test de profil professionnel</b> (20 minutes chronométrées, enregistré au fur et à mesure).
             {done ? ' Merci, votre test est terminé : votre formateur et l’équipe MCE peuvent maintenant consulter votre rapport.' : ' Votre formateur et l’équipe MCE verront votre rapport une fois le test terminé.'}
           </p>
         </div>
@@ -44,7 +50,7 @@ export default function ProfilPro() {
           <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold ring-1 ring-white/20">
-                <Clock className="h-3.5 w-3.5" /> Environ {PM.duration} minutes · {PROFIL_STEPS.length} étapes · sauvegarde automatique
+                <Clock className="h-3.5 w-3.5" /> {PM.duration} min chrono (+{PM.grace} min si besoin) · {PROFIL_STEPS.length} étapes · sauvegarde automatique
               </span>
               <h2 className="mt-4 text-3xl font-extrabold">{done ? 'Nouvelle passation ouverte' : 'Découvrez votre profil professionnel'}</h2>
               <p className="mt-2 max-w-2xl text-navy-100">

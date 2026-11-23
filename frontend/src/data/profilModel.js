@@ -20,7 +20,8 @@ const S = (id, dimension, text, opts) => ({
 export const PM = {
   version: '2.0.0',
   name: 'Profil de fonctionnement professionnel & compétences',
-  duration: 25,
+  duration: 20, // minutes chronométrées
+  grace: 3,     // minutes supplémentaires, puis envoi automatique
   instructions: 'Répondez selon votre expérience habituelle, et non selon la réponse idéale. Les résultats servent à personnaliser votre formation.',
   notice: 'Questionnaire de positionnement pédagogique, non étalonné et non diagnostique. Il n’est pas un test de personnalité clinique ni une évaluation psychométrique certifiée.',
   likert: ['Pas du tout d’accord', 'Plutôt pas d’accord', 'Ni d’accord ni pas d’accord', 'Plutôt d’accord', 'Tout à fait d’accord'],
@@ -237,13 +238,18 @@ export const stepIds = (st) => {
 export const bandOf = (score) => PM.bands.find((b) => score >= b.min);
 
 /* ---------- Calcul ---------- */
-export function scoreProfil(answers, minutes = 20) {
+/* Si le temps est écoulé, des réponses peuvent manquer :
+   affirmation sans réponse = neutre (3) ; situation sans réponse = score de l'auto-évaluation. */
+export function scoreProfil(answers, minutes = 20, { timedOut = false } = {}) {
+  const likert = (q) => answers[q.id] ?? 3;
+  const allIds = [...PM.likertQuestions.map((q) => q.id), ...PM.situations.map((s) => s.id), ...PREFERENCES.map((p) => p.id)];
+  const unanswered = allIds.filter((id) => answers[id] === undefined).length;
   const dimensions = PM.dimensions.map((d) => {
     const qs = PM.likertQuestions.filter((q) => q.dimension === d.id);
-    const total = qs.reduce((a, q) => a + (q.reverse ? 6 - answers[q.id] : answers[q.id]), 0);
+    const total = qs.reduce((a, q) => a + (q.reverse ? 6 - likert(q) : likert(q)), 0);
     const auto = Math.round((total / qs.length - 1) * 25);
     const situ = PM.situations.find((s) => s.dimension === d.id);
-    const situation = situ.options.find((o) => o.id === answers[situ.id]).score;
+    const situation = situ.options.find((o) => o.id === answers[situ.id])?.score ?? auto;
     const score = Math.round(auto * 0.7 + situation * 0.3);
     return { id: d.id, title: d.title, score, auto_score: auto, situation_score: situation, band: bandOf(score).label, summary: score >= 70 ? d.high : d.low, action30: d.action30 };
   });
@@ -254,29 +260,32 @@ export function scoreProfil(answers, minutes = 20) {
   // Axes : -100 (pôle A) … +100 (pôle B)
   const axes = Object.fromEntries(
     AXES.map((ax) => {
-      const items = PREFERENCES.filter((p) => p.axis === ax.id);
+      const items = PREFERENCES.filter((p) => p.axis === ax.id && answers[p.id] !== undefined);
       const b = items.filter((p) => answers[p.id] === 1).length;
-      return [ax.id, Math.round(((b / items.length) * 2 - 1) * 100)];
+      return [ax.id, items.length ? Math.round(((b / items.length) * 2 - 1) * 100) : 0];
     })
   );
 
   // Fiabilité des réponses (repères, pas un jugement)
-  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
-  const direct = PM.likertQuestions.filter((q) => !q.reverse).map((q) => answers[q.id]);
-  const reversed = PM.likertQuestions.filter((q) => q.reverse).map((q) => answers[q.id]);
-  const all = PM.likertQuestions.map((q) => answers[q.id]);
-  const mode = Math.max(...[1, 2, 3, 4, 5].map((v) => all.filter((x) => x === v).length)) / all.length;
+  const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+  const given = (qs) => qs.map((q) => answers[q.id]).filter((v) => v !== undefined);
+  const direct = given(PM.likertQuestions.filter((q) => !q.reverse));
+  const reversed = given(PM.likertQuestions.filter((q) => q.reverse));
+  const all = given(PM.likertQuestions);
+  const mode = all.length ? Math.max(...[1, 2, 3, 4, 5].map((v) => all.filter((x) => x === v).length)) / all.length : 0;
   const coherence = Math.round(100 - dimensions.reduce((a, d) => a + Math.abs(d.auto_score - d.situation_score), 0) / dimensions.length);
   const notes = [];
   if (mean(direct) >= 4 && mean(reversed) >= 3.8) notes.push('Tendance à approuver la plupart des affirmations, y compris celles formulées à l’inverse : certains scores peuvent être surestimés.');
   if (mode >= 0.6) notes.push('Réponses très uniformes (même niveau choisi la plupart du temps) : le profil est moins nuancé.');
   if (minutes < 8) notes.push('Questionnaire rempli très rapidement : résultats à confirmer en entretien.');
   if (coherence < 55) notes.push('Écart important entre l’auto-évaluation et les choix en situation : un bon sujet d’échange avec la formatrice.');
-  const reliability = { coherence, level: notes.length === 0 ? 'Bonne' : notes.length === 1 ? 'Correcte' : 'À confirmer', notes };
+  if (timedOut) notes.push(unanswered ? `Temps écoulé : ${unanswered} réponse(s) manquante(s), comptée(s) comme neutres.` : 'Temps écoulé, mais toutes les questions ont reçu une réponse.');
+  const tooMany = unanswered > allIds.length * 0.2;
+  const reliability = { coherence, level: tooMany || notes.length >= 2 ? 'À confirmer' : notes.length === 1 ? 'Correcte' : 'Bonne', notes };
 
   const context = Object.fromEntries(CONTEXT.map((c) => [c.id, answers[c.id]]));
   const objective = { dim: answers.OBJ_DIM, text: String(answers.OBJ_TEXT || '').trim() };
-  return { dimensions, global_score, strengths, priorities, axes, reliability, context, objective };
+  return { dimensions, global_score, strengths, priorities, axes, reliability, context, objective, unanswered, timed_out: timedOut };
 }
 
 export const dimOf = (run, id) => run.result.dimensions.find((d) => d.id === id);

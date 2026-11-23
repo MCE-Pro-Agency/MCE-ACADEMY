@@ -52,7 +52,7 @@ export default function ProfilReport({ profil, name }) {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-300">Profil de fonctionnement professionnel</p>
             <h1 className="mt-2 text-3xl font-extrabold sm:text-4xl">{name}</h1>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-navy-200">
-              <span>{formatDateTime(run.date)} · {run.minutes} min{runs.length > 1 ? ` · passation n°${runs.length}` : ''}</span>
+              <span>{formatDateTime(run.date)} · {run.minutes} min{run.timed_out ? ' · temps écoulé' : ''}{runs.length > 1 ? ` · passation n°${runs.length}` : ''}</span>
               {r.reliability && <span className={`rounded-full px-2 py-0.5 font-bold ${RELIA_TONE[r.reliability.level]}`}>Fiabilité des réponses : {r.reliability.level}</span>}
               {deltaGlobal !== null && (
                 <span className={`rounded-full px-2 py-0.5 font-bold ${deltaGlobal >= 0 ? 'bg-emerald-400/20 text-emerald-300' : 'bg-red-400/20 text-red-300'}`}>

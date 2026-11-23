@@ -322,7 +322,7 @@ export async function downloadProfilPdf({ run, name, comment, model }) {
   const r = run.result;
   const ty = profilType(run);
   const b = await builder();
-  b.header({ eyebrow: 'Rapport de profil professionnel', title: name, subtitle: `Passation du ${new Date(run.date).toLocaleDateString('fr-FR')} · ${run.minutes} min` });
+  b.header({ eyebrow: 'Rapport de profil professionnel', title: name, subtitle: `Passation du ${new Date(run.date).toLocaleDateString('fr-FR')} · ${run.minutes} min${run.timed_out ? ' · temps écoulé' : ''}` });
 
   // Indice global
   b.ensure(30);
