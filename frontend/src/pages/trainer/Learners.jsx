@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { UserPlus, Upload, Download, Search, MoreVertical, KeyRound, UserX, UserCheck, Trash2, Eye, Users } from 'lucide-react';
+import { UserPlus, Upload, Download, SlidersHorizontal, MoreVertical, KeyRound, UserX, UserCheck, Trash2, Eye, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/db';
 import { api } from '../../lib/api';
@@ -117,7 +117,7 @@ export default function Learners() {
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+          <SlidersHorizontal className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-brand-600" />
           <input className="input pl-10" placeholder="Rechercher par nom, email, poste…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <select className="input sm:w-44" value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -154,7 +154,7 @@ export default function Learners() {
               {filtered.map((l) => (
                 <tr key={l.user_id} className={`hover:bg-slate-50/60 ${!l.is_active ? 'opacity-60' : ''}`}>
                   <td className="table-td">
-                    <Link to={`/formateur/apprenants/${l.user_id}`} className="flex items-center gap-3">
+                    <Link to={`/formateur/apprenants/${l.user_id}?onglet=profil`} className="flex items-center gap-3">
                       <Avatar name={l.full_name} size="sm" />
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-navy-900 hover:text-brand-600">{l.full_name}</p>

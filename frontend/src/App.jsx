@@ -17,11 +17,15 @@ import Learners from './pages/trainer/Learners';
 import LearnerDetail from './pages/trainer/LearnerDetail';
 import TrainerCourses from './pages/trainer/Courses';
 import CourseEditor from './pages/trainer/CourseEditor';
+import TrainerModuleDetail from './pages/trainer/ModuleDetail';
 import Submissions from './pages/trainer/Submissions';
 import Announcements from './pages/trainer/Announcements';
 import CompanySettings from './pages/trainer/CompanySettings';
 import TrainerProgramme from './pages/trainer/Programme';
 import TrainerDocuments from './pages/trainer/Documents';
+import TrainerExercises from './pages/trainer/Exercises';
+import TrainerActivities from './pages/trainer/Activities';
+import TrainerReports from './pages/trainer/Reports';
 
 import AdminDashboard from './pages/admin/Dashboard';
 import Companies from './pages/admin/Companies';
@@ -57,7 +61,11 @@ export default function App() {
           <Route path="/formateur/documents" element={<TrainerDocuments />} />
           <Route path="/formateur/cours" element={<TrainerCourses />} />
           <Route path="/formateur/cours/:courseId" element={<CourseEditor />} />
+          <Route path="/formateur/cours/:courseId/modules/:moduleId" element={<TrainerModuleDetail />} />
           <Route path="/formateur/corrections" element={<Submissions />} />
+          <Route path="/formateur/exercices" element={<TrainerExercises />} />
+          <Route path="/formateur/activites" element={<TrainerActivities />} />
+          <Route path="/formateur/rapports" element={<TrainerReports />} />
           <Route path="/formateur/profils" element={<ProfilsSuivi scope="trainer" />} />
           <Route path="/formateur/annonces" element={<Announcements />} />
           <Route path="/formateur/entreprise" element={<CompanySettings />} />

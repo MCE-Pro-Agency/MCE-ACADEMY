@@ -17,19 +17,14 @@ const NAV = {
     { title: 'Mon espace', items: [{ to: '/app/mon-profil', label: 'Mon test de profil', icon: Brain }] },
   ],
   trainer: [
-    { title: 'Pilotage', items: [{ to: '/formateur', label: 'Tableau de bord', icon: LayoutDashboard, end: true }] },
-    { title: 'Mes apprenants', items: [
-      { to: '/formateur/programme', label: 'Programme & déblocage', icon: CalendarClock },
-      { to: '/formateur/apprenants', label: 'Suivi des apprenants', icon: Users },
-      { to: '/formateur/profils', label: 'Profils professionnels', icon: Brain },
-      { to: '/formateur/corrections', label: 'Corrections', icon: ClipboardCheck },
+    { title: 'Espace formateur', items: [
+      { to: '/formateur', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
+      { to: '/formateur/cours', label: 'Mes formations', icon: GraduationCap },
+      { to: '/formateur/exercices', label: 'Exercices & évaluations', icon: ClipboardCheck },
+      { to: '/formateur/apprenants', label: 'Mes apprenants', icon: Users },
+      { to: '/formateur/activites', label: 'Séances & activités', icon: CalendarClock },
+      { to: '/formateur/rapports', label: 'Résultats & rapports', icon: Award },
     ] },
-    { title: 'Mes contenus', items: [
-      { to: '/formateur/cours', label: 'Cours & modules', icon: GraduationCap },
-      { to: '/formateur/documents', label: 'Documents', icon: FolderOpen },
-      { to: '/formateur/annonces', label: 'Annonces', icon: Megaphone },
-    ] },
-    { title: 'Paramètres', items: [{ to: '/formateur/entreprise', label: 'Mon entreprise', icon: Settings }] },
   ],
   admin: [
     { title: 'Pilotage', items: [{ to: '/admin', label: "Vue d'ensemble", icon: LayoutDashboard, end: true }] },

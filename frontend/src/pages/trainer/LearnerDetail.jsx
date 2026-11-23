@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import toast from 'react-hot-toast';
 import { ArrowLeft, Clock, Target, Star, BookOpen, Plus, X, Mail, Briefcase, CalendarDays, Activity } from 'lucide-react';
@@ -9,6 +9,7 @@ import { moduleStore, profilStore, profilDone, useLocalStoreVersion } from '../.
 import { moduleMeta } from '../../data/programme';
 import ProfilReport from '../../components/profil/ProfilReport';
 import ProfilDownload from '../../components/profil/ProfilDownload';
+import TestTiming from './TestTiming';
 import { isModuleOpen } from './Programme';
 import { Avatar, Badge, PageLoader, ProgressBar, StatCard, Tabs } from '../../components/ui';
 import { formatDate, formatDateTime, formatDuration, scoreColor, timeAgo } from '../../lib/utils';
@@ -17,7 +18,8 @@ export default function LearnerDetail({ base = '/formateur' }) {
   const { userId } = useParams();
   useLocalStoreVersion({ refresh: true });
   const [data, setData] = useState(null);
-  const [tab, setTab] = useState('evolution');
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(() => searchParams.get('onglet') === 'profil' ? 'profil' : 'evolution');
 
   const load = async () => {
     const { data: who } = await db.from('profiles').select('company_id').eq('id', userId).maybeSingle();
@@ -385,6 +387,11 @@ function ProfilTab({ learner }) {
           <span className="self-center text-xs text-slate-400">{p.runs.length} passation(s)</span>
         </div>
       </div>
+      <section className="card space-y-3 p-5">
+        <div><p className="text-xs font-bold uppercase tracking-wide text-brand-700">Grand test professionnel</p><h2 className="text-lg font-bold text-navy-900">Temps de passation</h2></div>
+        <TestTiming run={p.runs[p.runs.length - 1]} />
+        {p.runs.length > 1 && <p className="text-xs text-slate-500">Mesure de la dernière passation ({p.runs.length} passations enregistrées).</p>}
+      </section>
       <ProfilReport profil={p} name={learner.full_name} />
     </div>
   );
