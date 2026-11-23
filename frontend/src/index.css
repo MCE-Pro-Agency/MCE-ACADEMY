@@ -58,3 +58,17 @@
   .no-print { display: none !important; }
   body { background: white; }
 }
+
+/* ---------- Animations des diagrammes (profil, parcours) ---------- */
+@keyframes mce-radar-in { from { transform: scale(0.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes mce-pop { 0% { transform: scale(0); opacity: 0; } 70% { transform: scale(1.25); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes mce-draw { from { stroke-dasharray: 0 2000; } to { stroke-dasharray: 2000 0; } }
+@keyframes mce-pulse-ring { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes mce-dash { to { stroke-dashoffset: -40; } }
+@keyframes mce-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.mce-radar-in { animation: mce-radar-in .9s cubic-bezier(.2,.9,.3,1.2) both; }
+.mce-pop { animation: mce-pop .55s ease-out both; transform-box: fill-box; transform-origin: center; }
+.mce-draw { animation: mce-draw 1.4s ease-out both; }
+.mce-pulse-ring { animation: mce-pulse-ring 1.8s ease-out infinite; transform-origin: center; }
+.mce-dash { animation: mce-dash 1.2s linear infinite; }
+.mce-float { animation: mce-float 4s ease-in-out infinite; }

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Users, GraduationCap, Clock, Target, ClipboardCheck, AlertTriangle, ArrowRight, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { Avatar, Badge, EmptyState, PageLoader, ProgressBar, StatCard } from '../../components/ui';
 import { formatDuration, timeAgo, num } from '../../lib/utils';
 
@@ -21,11 +21,11 @@ export default function TrainerDashboard() {
     setLoading(true);
     (async () => {
       const [l, c, a, p, comp] = await Promise.all([
-        supabase.rpc('company_learner_stats', { p_company: activeCompanyId }),
-        supabase.rpc('company_course_stats', { p_company: activeCompanyId }),
-        supabase.rpc('activity_by_day', { p_company: activeCompanyId, p_days: 14 }),
-        supabase.from('exercise_submissions').select('id, course:courses!inner(company_id)', { count: 'exact', head: true }).eq('status', 'submitted').eq('course.company_id', activeCompanyId),
-        supabase.from('companies').select('name').eq('id', activeCompanyId).single(),
+        db.rpc('company_learner_stats', { p_company: activeCompanyId }),
+        db.rpc('company_course_stats', { p_company: activeCompanyId }),
+        db.rpc('activity_by_day', { p_company: activeCompanyId, p_days: 14 }),
+        db.from('exercise_submissions').select('id, course:courses!inner(company_id)', { count: 'exact', head: true }).eq('status', 'submitted').eq('course.company_id', activeCompanyId),
+        db.from('companies').select('name').eq('id', activeCompanyId).single(),
       ]);
       setLearners(l.data || []);
       setCourses(c.data || []);

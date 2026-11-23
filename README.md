@@ -36,140 +36,121 @@ Elle fonctionne comme Udemy ou OpenClassrooms, mais en **multi-entreprises** : c
 ## 2. Architecture
 
 ```
-mce-academy/
-├── supabase/
-│   └── schema.sql          ← base de données complète (tables, sécurité RLS, fonctions, stockage)
-├── server/                 ← API Node.js / Express (création des comptes, import, suppression)
+mce-academie/
+├── database/
+│   └── schema.sql          ← base MySQL complète (16 tables)
+├── server/                 ← API Node.js / Express (seule à parler à MySQL)
 │   ├── src/
-│   │   ├── index.js
-│   │   ├── supabase.js
-│   │   ├── middleware/auth.js
-│   │   ├── services/accounts.js
-│   │   └── routes/ (users.js, companies.js)
-│   └── scripts/ (seed.js, seed-data.js)   ← premier admin + données de démo VIGILUS
+│   │   ├── index.js        ← point d'entrée
+│   │   ├── db.js           ← connexion MySQL (pool)
+│   │   ├── policies.js     ← règles d'accès par rôle et par table
+│   │   ├── query.js        ← moteur de requêtes (lecture, relations, écriture)
+│   │   ├── middleware/auth.js   ← sessions JWT
+│   │   ├── services/accounts.js ← comptes (mots de passe chiffrés bcrypt)
+│   │   └── routes/         ← auth, db, rpc (fonctions métier), upload, users, companies
+│   ├── scripts/            ← init-db.js (crée la base), seed.js (admin + démo)
+│   └── uploads/            ← fichiers envoyés (couvertures, documents, rendus)
 └── frontend/               ← React 18 + Vite + Tailwind CSS
-    ├── public/logo.png
     └── src/
-        ├── pages/          (Landing, Login, Profile…)
-        │   ├── learner/    (Dashboard, Catalog, CourseDetail, LessonPlayer, Grades, Certificate)
-        │   ├── trainer/    (Dashboard, Learners, LearnerDetail, Courses, CourseEditor, Submissions, Announcements, CompanySettings)
-        │   └── admin/      (Dashboard, Companies, Users)
-        ├── components/     (UI : barres et anneaux de progression, modales, cartes…)
-        ├── contexts/AuthContext.jsx
-        └── lib/            (supabase, api, utils, queries)
+        ├── pages/          ← un dossier par espace : admin/, trainer/, learner/, shared/
+        ├── components/     ← briques d'interface et diagrammes (profil/, ModuleJourney…)
+        ├── data/           ← contenus et règles métier (test de profil, mémos)
+        └── lib/            ← db.js (client API), stores.js, api.js, queries.js, utils.js
 ```
 
 **Qui fait quoi ?**
-- **Supabase** : base PostgreSQL, authentification, stockage des fichiers. La **sécurité est dans la base** (Row Level Security) : même en contournant l'interface, un apprenant ne peut lire que les données de son entreprise.
-- **Frontend React** : lit et écrit directement dans Supabase avec la clé publique `anon`, filtrée par la RLS.
-- **API Node.js** : uniquement pour les actions qui exigent la clé secrète `service_role` (créer, modifier ou supprimer des comptes, importer des apprenants, supprimer une entreprise).
+- **MySQL** : toutes les données (comptes, cours, progression, notes, profils professionnels, déblocage des modules).
+- **API Node.js** : authentification (JWT + mots de passe bcrypt), **contrôle d'accès** sur chaque lecture/écriture, fonctions métier (correction des quiz, temps passé, statistiques), envoi de fichiers.
+- **Frontend React** : ne parle qu'à l'API (`/api`). Le client `lib/db.js` garde une écriture simple : `db.from('courses').select('*, modules(*)').eq('id', x)`.
+
+**Les trois espaces**
+| Espace | Voit et gère |
+|---|---|
+| Administrateur MCE | tout : entreprises, formateurs, apprenants, profils, activité |
+| Formateur | son entreprise : cours, modules, apprenants, corrections, profils |
+| Apprenant | ses formations, sa progression, ses notes, son profil professionnel, ses ressources |
 
 ### Modèle de données
 
 ```
-companies ─┬─ profiles (admin | trainer | learner)
-           ├─ courses ─ modules ─ lessons ─ quiz_questions ─ quiz_answers (cachées)
+companies ─┬─ profiles (admin | trainer | learner, mot de passe chiffré)
+           ├─ courses ─ modules ─┬─ lessons ─ quiz_questions ─ quiz_answers (cachées aux apprenants)
+           │                     └─ module_settings (déblocage : ouvert, fermé, date, progressif)
            └─ announcements
-profiles ─┬─ enrollments (inscriptions + date de fin)
-          ├─ lesson_progress (terminé + temps passé par leçon)
-          ├─ quiz_attempts (notes auto en %)
-          ├─ exercise_submissions (notes /20 + retour)
-          └─ user_sessions (temps de connexion)
+profiles ─┬─ enrollments · lesson_progress · quiz_attempts · exercise_submissions · user_sessions
+          └─ profile_assessments (test de profil professionnel : passations, observations)
 ```
 
 ---
 
-## 3. Installation
+## 3. Installation (Windows / XAMPP ou MySQL 8)
 
 ### Prérequis
-- **Node.js 18+** ([nodejs.org](https://nodejs.org))
-- Un compte **Supabase** gratuit ([supabase.com](https://supabase.com))
+- **Node.js 18+**
+- **MySQL 8** ou **MariaDB 10.4+** (celui de XAMPP convient)
 
-### Étape 1 : créer la base Supabase
-1. Sur Supabase : **New project**.
-2. Ouvrez **SQL Editor → New query**, collez **tout** le contenu de `supabase/schema.sql`, puis cliquez **Run**.
-   *(Le script peut être relancé sans risque.)*
-3. Dans **Authentication → Providers → Email** :
-   - **désactivez « Allow new users to sign up »** : les comptes sont créés par l'admin ou les formateurs, personne ne peut s'inscrire seul ;
-   - vous pouvez désactiver « Confirm email » (les comptes créés par l'API sont déjà confirmés).
-4. Dans **Authentication → URL Configuration**, mettez votre URL dans *Site URL* (ex. `http://localhost:5173` en local) pour que le lien « mot de passe oublié » fonctionne.
-5. Récupérez dans **Project Settings → API** :
-   - `Project URL`
-   - la clé `anon public`
-   - la clé `service_role` (**secrète**)
-
-### Étape 2 : configurer et lancer l'API Node.js
+### Étape 1 : configurer l'API
 ```bash
 cd server
-cp .env.example .env      # puis remplissez SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_EMAIL, ADMIN_PASSWORD
+cp .env.example .env      # renseignez DB_USER / DB_PASSWORD, JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD
 npm install
-npm run seed              # crée l'administrateur (+ démo VIGILUS si SEED_DEMO=true)
+npm run setup             # crée la base « mce_academy » + l'administrateur (+ démo si SEED_DEMO=true)
 npm run dev               # API sur http://localhost:4000
 ```
+`npm run db:init` crée uniquement la base ; vous pouvez aussi importer `database/schema.sql` dans phpMyAdmin.
 
-### Étape 3 : configurer et lancer le frontend
+### Étape 2 : lancer le frontend
 ```bash
 cd frontend
-cp .env.example .env      # remplissez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY
 npm install
-npm run dev               # http://localhost:5173
+npm run dev               # http://localhost:5173 (l'API est jointe via le proxy Vite)
 ```
 
 ### Comptes de démonstration (si `SEED_DEMO=true`)
 | Rôle | Email | Mot de passe |
 |---|---|---|
 | Administrateur | celui de `ADMIN_EMAIL` | celui de `ADMIN_PASSWORD` |
-| Formateur VIGILUS | `formateur@vigilus.demo` | `Formateur!2026` |
-| Apprenants VIGILUS | `apprenant1@vigilus.demo`, `apprenant2@…`, `apprenant3@…` | `Apprenant!2026` |
+| Formateur | `formateur@vigilus.demo` | `Formateur!2026` |
+| Apprenants | `apprenant1@vigilus.demo`, `apprenant2@…`, `apprenant3@…` | `Apprenant!2026` |
 
-La démo contient le programme **VIGILUS IMPACT** (5 modules + défis J+30, quiz et exercices) et le parcours court **Méthode C.L.E.F.**, rédigés à partir de vos supports.
-
-> ⚠️ En production, **supprimez ou changez les mots de passe des comptes de démo**.
-
-### Créer l'admin sans le script (alternative)
-Créez un utilisateur dans **Authentication → Users → Add user**, puis dans le SQL Editor :
-```sql
-update public.profiles set role = 'admin', company_id = null where email = 'votre@email.com';
-```
+> ⚠️ En production, supprimez les comptes de démo ou changez leurs mots de passe.
 
 ---
 
 ## 4. Utilisation au quotidien
 
-1. **Admin** → *Entreprises* → **Nouvelle entreprise** (avec son formateur référent) → les identifiants s'affichent.
-2. **Admin** peut cliquer **Ouvrir l'espace** pour gérer l'entreprise comme un formateur.
-3. **Formateur** → *Cours & modules* → **Nouveau cours** → ajoutez modules et leçons → **Publier**.
-4. **Formateur** → *Apprenants* → **Ajouter** ou **Importer CSV** (colonnes `email;prenom;nom;poste`, un modèle est téléchargeable) → transmettez les identifiants.
-5. **Apprenant** se connecte, suit ses cours, passe les quiz et rend ses exercices.
-6. **Formateur** suit tout depuis son *Tableau de bord*, corrige dans *Corrections*, exporte en CSV.
+1. **Admin** → *Entreprises clientes* → **Nouvelle entreprise** (avec son formateur référent) → les identifiants s'affichent.
+2. **Formateur** → *Cours & modules* → crée cours, modules et leçons, puis **publie**. → *Programme & déblocage* → ouvre les modules **jour après jour** (fermé / ouvert / à une date) et suit chaque apprenant module par module. Un module fermé est masqué côté serveur : ni leçons, ni quiz, ni téléchargements.
+   → *Documents* : met à disposition les supports (diaporama, livret des mémos) et dépose les e-books ou attestations individuels.
+3. **Formateur** → *Suivi des apprenants* → **Ajouter** ou **Importer CSV** → transmet les identifiants.
+4. **Apprenant** passe son **profil professionnel**, suit ses cours, ses quiz et rend ses exercices.
+5. **Formateur / Admin** suivent la progression, corrigent, consultent les profils et exportent en CSV.
 
-**Contenu des leçons** : écrit en Markdown (`# Titre`, `**gras**`, `- liste`, tableaux `| a | b |`, citations `>`), avec un bouton *Aperçu*.
+**Contenu de la formation VIGILUS IMPACT** : `server/scripts/content/vigilus-impact.js` (leçons) + les JSON du kit MCE (quiz et missions) dans le même dossier. Les PDF participants sont dans `frontend/public/documents/`. Pour réimporter le contenu après modification : `cd server && npm run seed:content` (les comptes, profils et documents sont conservés ; la progression sur les cours est remise à zéro).
+
+**Espace apprenant** : guide complet de reprise dans [docs/ESPACE_APPRENANT.md](docs/ESPACE_APPRENANT.md) (mode « test uniquement », déblocage, suivi, passage à Supabase). Migration Supabase prête : `supabase/schema.sql` puis `supabase/002_espace_apprenant.sql`.
+
+Mot de passe oublié : le formateur (ou l'admin) génère un nouveau mot de passe temporaire depuis la fiche de l'utilisateur.
 
 ---
 
 ## 5. Mise en production
 
-**Option A : un seul serveur (simple)**
 ```bash
 cd frontend && npm run build      # génère frontend/dist
 cd ../server && npm start         # sert l'API ET le site sur le même port
 ```
-Mettez `CORS_ORIGIN` sur votre domaine et laissez `VITE_API_URL` vide.
-
-**Option B : séparé**
-- Frontend sur **Vercel / Netlify** (dossier `frontend`, commande `npm run build`, sortie `dist`, et une redirection SPA de toutes les routes vers `index.html`). Définissez `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` et `VITE_API_URL=https://api.votre-domaine.com`.
-- API sur **Render / Railway / un VPS** (dossier `server`, `npm start`). Définissez les variables de `server/.env` et `CORS_ORIGIN=https://votre-domaine.com`.
+Mettez `CORS_ORIGIN` sur votre domaine, laissez `VITE_API_URL` vide, utilisez un `JWT_SECRET` long et unique, et sauvegardez régulièrement la base (`mysqldump mce_academy`) ainsi que `server/uploads/`.
 
 ---
 
 ## 6. Sécurité
 
-- La clé `service_role` ne doit **jamais** se trouver dans le frontend ni dans Git.
-- Le rôle et l'entreprise d'un utilisateur sont stockés dans `app_metadata` et protégés par un trigger : un utilisateur ne peut pas se promouvoir lui-même.
-- Un apprenant ne peut ni voir les bonnes réponses des quiz, ni se noter lui-même (trigger `protect_submission`).
-- Une entreprise **suspendue** par l'admin bloque l'accès aux cours de ses apprenants.
-- Un compte **désactivé** est bloqué au niveau de l'authentification Supabase.
-- Le bucket `media` est public en lecture (les URL sont imprévisibles). Pour des rendus d'exercices confidentiels, créez un bucket privé et des URL signées.
+- Les mots de passe sont chiffrés (**bcrypt**) ; les sessions sont des jetons **JWT** signés (durée : `JWT_TTL`).
+- **Chaque requête est filtrée côté serveur** (`server/src/policies.js`) : un apprenant ne lit que ses données, un formateur que son entreprise.
+- Un utilisateur ne peut pas changer son propre rôle ni son entreprise ; un apprenant ne peut ni voir les bonnes réponses des quiz, ni se noter lui-même.
+- Une entreprise suspendue bloque l'accès aux cours de ses apprenants ; un compte désactivé ne peut plus se connecter.
+- Les identifiants MySQL et `JWT_SECRET` restent dans `server/.env` (jamais dans Git ni dans le frontend).
 
 ---
 

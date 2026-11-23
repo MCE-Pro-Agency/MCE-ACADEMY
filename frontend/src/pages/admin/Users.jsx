@@ -1,28 +1,37 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 import { UserPlus, Search, Pencil, Trash2, KeyRound, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { api } from '../../lib/api';
 import { Avatar, Badge, CredentialBox, Field, Modal, PageLoader, Spinner, Toggle } from '../../components/ui';
 import { ROLE_LABELS, timeAgo } from '../../lib/utils';
 
 const ROLE_TONES = { admin: 'navy', trainer: 'brand', learner: 'slate' };
 
-export default function Users() {
+const PAGE = {
+  trainer: { title: 'Formateurs', subtitle: 'Les formateurs de chaque entreprise cliente : ils créent les cours et suivent leurs apprenants', button: 'Nouveau formateur' },
+  learner: { title: 'Apprenants', subtitle: 'Tous les apprenants de la plateforme, toutes entreprises confondues', button: 'Nouvel apprenant' },
+  '': { title: 'Tous les comptes', subtitle: 'Administrateurs, formateurs et apprenants', button: 'Nouvel utilisateur' },
+};
+
+export default function Users({ fixedRole = '' }) {
   const { profile: me } = useAuth();
   const [users, setUsers] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [search, setSearch] = useState('');
-  const [role, setRole] = useState('');
+  const [role, setRole] = useState(fixedRole);
+  useEffect(() => setRole(fixedRole), [fixedRole]);
+  const page = PAGE[fixedRole];
   const [companyId, setCompanyId] = useState('');
   const [modal, setModal] = useState(null);
   const [credentials, setCredentials] = useState(null);
 
   const load = async () => {
     const [{ data: u }, { data: c }] = await Promise.all([
-      supabase.from('profiles').select('*, company:companies(name)').order('created_at', { ascending: false }),
-      supabase.from('companies').select('id, name').order('name'),
+      db.from('profiles').select('*, company:companies(name)').order('created_at', { ascending: false }),
+      db.from('companies').select('id, name').order('name'),
     ]);
     setUsers(u || []);
     setCompanies(c || []);
@@ -68,10 +77,11 @@ export default function Users() {
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="page-title">Utilisateurs</h1>
-          <p className="page-subtitle">{users.length} comptes sur la plateforme.</p>
+          <p className="eyebrow">Organisation</p>
+          <h1 className="page-title">{page.title}</h1>
+          <p className="page-subtitle">{page.subtitle} · {filtered.length} compte(s).</p>
         </div>
-        <button onClick={() => setModal('new')} className="btn-primary"><UserPlus className="h-4 w-4" /> Nouvel utilisateur</button>
+        <button onClick={() => setModal('new')} className="btn-primary"><UserPlus className="h-4 w-4" /> {page.button}</button>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -79,10 +89,10 @@ export default function Users() {
           <Search className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
           <input className="input pl-10" placeholder="Nom ou email…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <select className="input sm:w-44" value={role} onChange={(e) => setRole(e.target.value)}>
+        {!fixedRole && <select className="input sm:w-44" value={role} onChange={(e) => setRole(e.target.value)}>
           <option value="">Tous les rôles</option>
           {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
+        </select>}
         <select className="input sm:w-56" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
           <option value="">Toutes les entreprises</option>
           {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -107,7 +117,10 @@ export default function Users() {
                   <div className="flex items-center gap-3">
                     <Avatar name={u.full_name} src={u.avatar_url} size="sm" />
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-navy-900">{u.full_name} {u.id === me.id && <span className="text-xs font-normal text-slate-400">(vous)</span>}</p>
+                      <p className="truncate font-semibold text-navy-900">
+                        {u.role === 'learner' ? <Link to={`/admin/apprenants/${u.id}`} className="hover:text-brand-600 hover:underline">{u.full_name}</Link> : u.full_name}{' '}
+                        {u.id === me.id && <span className="text-xs font-normal text-slate-400">(vous)</span>}
+                      </p>
                       <p className="truncate text-xs text-slate-500">{u.email}</p>
                     </div>
                   </div>
@@ -128,7 +141,7 @@ export default function Users() {
         </table>
       </div>
 
-      {modal && <UserModal user={modal === 'new' ? null : modal} companies={companies} isSelf={modal?.id === me.id} onClose={() => setModal(null)} onSaved={load} onCredentials={setCredentials} />}
+      {modal && <UserModal user={modal === 'new' ? null : modal} defaultRole={fixedRole} companies={companies} isSelf={modal?.id === me.id} onClose={() => setModal(null)} onSaved={load} onCredentials={setCredentials} />}
       <Modal open={!!credentials} onClose={() => setCredentials(null)} title="Identifiants" size="sm">
         {credentials && <CredentialBox email={credentials.email} password={credentials.password} />}
       </Modal>
@@ -136,13 +149,13 @@ export default function Users() {
   );
 }
 
-function UserModal({ user, companies, isSelf, onClose, onSaved, onCredentials }) {
+function UserModal({ user, defaultRole, companies, isSelf, onClose, onSaved, onCredentials }) {
   const isNew = !user;
   const [form, setForm] = useState({
     full_name: user?.full_name || '',
     email: user?.email || '',
     job_title: user?.job_title || '',
-    role: user?.role || 'learner',
+    role: user?.role || defaultRole || 'learner',
     company_id: user?.company_id || companies[0]?.id || '',
     password: '',
     is_active: user?.is_active ?? true,

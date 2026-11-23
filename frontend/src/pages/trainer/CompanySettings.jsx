@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Building2, Save, Upload } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, uploadMedia } from '../../lib/supabase';
+import { db, uploadMedia } from '../../lib/db';
 import { Field, PageLoader } from '../../components/ui';
 
 export default function CompanySettings() {
@@ -11,7 +11,7 @@ export default function CompanySettings() {
 
   useEffect(() => {
     if (!activeCompanyId) return;
-    supabase.from('companies').select('*').eq('id', activeCompanyId).single().then(({ data }) => setForm(data));
+    db.from('companies').select('*').eq('id', activeCompanyId).single().then(({ data }) => setForm(data));
   }, [activeCompanyId]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -29,7 +29,7 @@ export default function CompanySettings() {
   const save = async (e) => {
     e.preventDefault();
     const { name, sector, contact_email, logo_url } = form;
-    const { error } = await supabase.from('companies').update({ name, sector, contact_email, logo_url }).eq('id', activeCompanyId);
+    const { error } = await db.from('companies').update({ name, sector, contact_email, logo_url }).eq('id', activeCompanyId);
     if (error) return toast.error(error.message);
     toast.success('Entreprise mise à jour');
     refreshProfile();

@@ -10,6 +10,12 @@ import { fileURLToPath } from 'node:url';
 
 import usersRouter from './routes/users.js';
 import companiesRouter from './routes/companies.js';
+import authRouter from './routes/auth.js';
+import dbRouter from './routes/db.js';
+import rpcRouter from './routes/rpc.js';
+import uploadRouter, { UPLOAD_DIR } from './routes/upload.js';
+import { pool } from './db.js';
+import { loadMeta } from './query.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -20,15 +26,27 @@ const origins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
   .map((s) => s.trim())
   .filter(Boolean);
 
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: origins, credentials: true }));
 app.use(express.json({ limit: '2mb' }));
 app.use(morgan('dev'));
-app.use('/api', rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false }));
+app.use('/api', rateLimit({ windowMs: 60_000, limit: 1000, standardHeaders: true, legacyHeaders: false }));
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'mce-academy-api', time: new Date().toISOString() }));
+app.get('/api/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ ok: true, service: 'mce-academy-api', database: 'mysql', time: new Date().toISOString() });
+  } catch (e) {
+    res.status(503).json({ ok: false, error: `Base MySQL injoignable : ${e.message}` });
+  }
+});
+app.use('/api/auth', authRouter);
+app.use('/api/db', dbRouter);
+app.use('/api/rpc', rpcRouter);
+app.use('/api/upload', uploadRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/companies', companiesRouter);
+app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
 
 // En production : sert le frontend compilé (frontend/dist) si présent
 const dist = path.resolve(__dirname, '../../frontend/dist');
@@ -46,6 +64,10 @@ app.use((err, _req, res, _next) => {
   if (status >= 500) console.error(err);
   res.status(status).json({ error: err.message || 'Erreur serveur.' });
 });
+
+loadMeta()
+  .then(() => console.log('✅ Base MySQL connectée'))
+  .catch((e) => console.error(`⚠️  Base MySQL injoignable (${e.code || e.message}). Vérifiez server/.env puis lancez « npm run db:init ».`));
 
 app.listen(PORT, () => {
   console.log(`✅ MCE Academy API démarrée sur http://localhost:${PORT}`);

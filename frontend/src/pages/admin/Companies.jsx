@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Building2, Plus, Search, ArrowRight, Pencil, Trash2, Users, GraduationCap, Clock, Power } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { api } from '../../lib/api';
 import { Badge, CredentialBox, EmptyState, Field, Modal, PageLoader, Spinner } from '../../components/ui';
 import { timeAgo } from '../../lib/utils';
@@ -18,8 +18,8 @@ export default function Companies() {
 
   const load = async () => {
     const [{ data: c }, { data: o }] = await Promise.all([
-      supabase.from('companies').select('*').order('name'),
-      supabase.rpc('companies_overview'),
+      db.from('companies').select('*').order('name'),
+      db.rpc('companies_overview'),
     ]);
     const ov = Object.fromEntries((o || []).map((r) => [r.company_id, r]));
     setItems((c || []).map((x) => ({ ...x, stats: ov[x.id] || {} })));
@@ -35,7 +35,7 @@ export default function Companies() {
   };
 
   const toggleActive = async (c) => {
-    const { error } = await supabase.from('companies').update({ is_active: !c.is_active }).eq('id', c.id);
+    const { error } = await db.from('companies').update({ is_active: !c.is_active }).eq('id', c.id);
     if (error) return toast.error(error.message);
     load();
   };
@@ -137,7 +137,7 @@ function CompanyModal({ company, onClose, onSaved }) {
         if (res.trainer?.profile) setResult({ email: res.trainer.profile.email, password: res.trainer.temporary_password || trainer.password });
         else onClose();
       } else {
-        const { error } = await supabase.from('companies').update({ ...form, max_learners: Number(form.max_learners) || null }).eq('id', company.id);
+        const { error } = await db.from('companies').update({ ...form, max_learners: Number(form.max_learners) || null }).eq('id', company.id);
         if (error) throw error;
         toast.success('Entreprise mise à jour');
         onSaved();

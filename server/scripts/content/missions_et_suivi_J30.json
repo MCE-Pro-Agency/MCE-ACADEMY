@@ -1,0 +1,96 @@
+{
+  "projet": "VIGILUS IMPACT",
+  "precisions": "Les exercices de J+7 à J+30 complètent les missions déjà indexées dans la plateforme; éviter les doublons au moment de l’import.",
+  "missions": [
+    {
+      "id": "D01",
+      "moment": "Lundi",
+      "module": "Communication interpersonnelle",
+      "titre": "Deux points de vue, un même objet",
+      "consigne": "Raconte en trois phrases ce qui change quand tu écoutes la perspective de l’autre.",
+      "format": "texte",
+      "privé": true
+    },
+    {
+      "id": "D02",
+      "moment": "Mardi",
+      "module": "Leadership et management",
+      "titre": "Une décision C.L.E.F.",
+      "consigne": "Choisis une mission concrète : résultat attendu, écoute, critère équitable, appui proposé.",
+      "format": "texte",
+      "privé": true
+    },
+    {
+      "id": "D03",
+      "moment": "Mercredi",
+      "module": "Hygiène de vie et propreté (hommes et femmes)",
+      "titre": "Une habitude utile",
+      "consigne": "Identifie une habitude d’hygiène, de présentation ou de bien-être professionnel que tu souhaites améliorer.",
+      "format": "texte",
+      "privé": true
+    },
+    {
+      "id": "D04",
+      "moment": "Jeudi",
+      "module": "Prise de parole en public",
+      "titre": "Miroir Vocal — passage 1",
+      "consigne": "Enregistre 90 secondes pour expliquer une idée liée à ton activité.",
+      "format": "video",
+      "privé": true
+    },
+    {
+      "id": "D05",
+      "moment": "Jeudi",
+      "module": "Prise de parole en public",
+      "titre": "Miroir Vocal — passage 2",
+      "consigne": "Reprends le même sujet en améliorant un point précis identifié lors du feedback.",
+      "format": "video",
+      "privé": true
+    },
+    {
+      "id": "D06",
+      "moment": "Vendredi",
+      "module": "Animation de réunions et communication d'influence",
+      "titre": "Une décision, un responsable, une échéance",
+      "consigne": "Résume une réunion simulée en indiquant la décision, le responsable et la date de suivi.",
+      "format": "texte",
+      "privé": true
+    },
+    {
+      "id": "J07",
+      "moment": "J+7",
+      "module": "Communication interpersonnelle",
+      "titre": "Mon geste d’écoute",
+      "consigne": "Applique une reformulation dans un échange réel. Décris uniquement la situation de manière anonymisée et ce qui a changé.",
+      "format": "texte",
+      "privé": true
+    },
+    {
+      "id": "J14",
+      "moment": "J+14",
+      "module": "Leadership et management",
+      "titre": "Une C.L.E.F. dans mon quotidien",
+      "consigne": "Choisis une lettre C.L.E.F. et décris une action menée cette semaine et son effet observable.",
+      "format": "texte",
+      "privé": true
+    },
+    {
+      "id": "J21",
+      "moment": "J+21",
+      "module": "Prise de parole en public",
+      "titre": "Mon message en 90 secondes",
+      "consigne": "Prépare une mini-présentation écrite ou audio, en une idée claire, un exemple et une conclusion.",
+      "format": "audio_ou_texte",
+      "privé": true
+    },
+    {
+      "id": "J30",
+      "moment": "J+30",
+      "module": "Animation de réunions et communication d'influence",
+      "titre": "Mon bilan de progression",
+      "consigne": "Donne une action maintenue, un progrès observé et le prochain objectif.",
+      "format": "texte",
+      "privé": true
+    }
+  ]
+}

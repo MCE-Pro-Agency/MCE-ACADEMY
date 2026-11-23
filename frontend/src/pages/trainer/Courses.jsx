@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Plus, GraduationCap, Users, CheckCircle2, Pencil, Eye, Trash2, BookOpen } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { Badge, EmptyState, Field, Modal, PageLoader, ProgressBar, Toggle } from '../../components/ui';
 import { CourseCover } from '../../components/CourseCard';
 import { LEVEL_LABELS } from '../../lib/utils';
@@ -19,8 +19,8 @@ export default function TrainerCourses() {
 
   const load = async () => {
     const [{ data }, s] = await Promise.all([
-      supabase.from('courses').select('*').eq('company_id', activeCompanyId).order('created_at', { ascending: false }),
-      supabase.rpc('company_course_stats', { p_company: activeCompanyId }),
+      db.from('courses').select('*').eq('company_id', activeCompanyId).order('created_at', { ascending: false }),
+      db.rpc('company_course_stats', { p_company: activeCompanyId }),
     ]);
     setCourses(data || []);
     setStats(Object.fromEntries((s.data || []).map((r) => [r.course_id, r])));
@@ -33,19 +33,19 @@ export default function TrainerCourses() {
 
   const create = async (e) => {
     e.preventDefault();
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('courses')
       .insert({ ...form, company_id: activeCompanyId, created_by: profile.id })
       .select()
       .single();
     if (error) return toast.error(error.message);
-    await supabase.from('modules').insert({ course_id: data.id, title: 'Module 1', position: 0 });
+    await db.from('modules').insert({ course_id: data.id, title: 'Module 1', position: 0 });
     toast.success('Cours créé');
     navigate(`/formateur/cours/${data.id}`);
   };
 
   const togglePublish = async (c) => {
-    const { error } = await supabase.from('courses').update({ is_published: !c.is_published }).eq('id', c.id);
+    const { error } = await db.from('courses').update({ is_published: !c.is_published }).eq('id', c.id);
     if (error) return toast.error(error.message);
     toast.success(c.is_published ? 'Cours repassé en brouillon' : 'Cours publié : visible par les apprenants');
     load();
@@ -53,7 +53,7 @@ export default function TrainerCourses() {
 
   const remove = async (c) => {
     if (!confirm(`Supprimer « ${c.title} » ? Modules, leçons, notes et progressions associés seront supprimés.`)) return;
-    const { error } = await supabase.from('courses').delete().eq('id', c.id);
+    const { error } = await db.from('courses').delete().eq('id', c.id);
     if (error) return toast.error(error.message);
     toast.success('Cours supprimé');
     load();

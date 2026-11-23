@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Building2, Users, GraduationCap, Clock, Award, Activity, BookOpen, UserCog, ArrowRight } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { PageLoader, StatCard } from '../../components/ui';
 import { timeAgo } from '../../lib/utils';
 
@@ -14,10 +14,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     (async () => {
       const [s, a, c, o] = await Promise.all([
-        supabase.rpc('platform_stats'),
-        supabase.rpc('activity_by_day', { p_company: null, p_days: 30 }),
-        supabase.from('companies').select('id, name, is_active').order('created_at', { ascending: false }),
-        supabase.rpc('companies_overview'),
+        db.rpc('platform_stats'),
+        db.rpc('activity_by_day', { p_company: null, p_days: 30 }),
+        db.from('companies').select('id, name, is_active').order('created_at', { ascending: false }),
+        db.rpc('companies_overview'),
       ]);
       setStats(s.data || {});
       setActivity((a.data || []).map((d) => ({ ...d, label: new Date(d.day).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }), minutes: Number(d.minutes), active_users: Number(d.active_users) })));

@@ -1,0 +1,403 @@
+{
+  "projet": "VIGILUS IMPACT",
+  "usage": "Quiz formatifs sans classement des salariés",
+  "nombre_quiz": 9,
+  "quizzes": [
+    {
+      "id": "QUIZ_COMM",
+      "titre": "Vérification des acquis — Communication interpersonnelle",
+      "module": "Communication interpersonnelle",
+      "unlock": "apres_module",
+      "offset_jours": 0,
+      "type": "quiz_formatif",
+      "feedback_immédiat": true,
+      "questions": [
+        {
+          "id": "QUIZ_COMM_01",
+          "enonce": "Un client est contrarié. Quelle est la meilleure première réaction ?",
+          "options": [
+            "Lui opposer immédiatement le contrat",
+            "Écouter sa demande et reformuler les faits",
+            "Lui promettre une solution immédiate"
+          ],
+          "bonne_reponse_index": 1,
+          "explication": "Écouter et vérifier la situation précède la recherche de solution."
+        },
+        {
+          "id": "QUIZ_COMM_02",
+          "enonce": "Face à un désaccord, que faut-il distinguer ?",
+          "options": [
+            "Les faits et les interprétations",
+            "Les personnes de leur statut",
+            "Les sentiments du supérieur"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "La distinction faits/interprétations réduit les malentendus."
+        },
+        {
+          "id": "QUIZ_COMM_03",
+          "enonce": "Quelle formule aide à comprendre sans approuver ?",
+          "options": [
+            "Tu as tort",
+            "Si je comprends bien, tu rencontres…",
+            "Ce n’est pas mon problème"
+          ],
+          "bonne_reponse_index": 1,
+          "explication": "Reformuler permet de vérifier la compréhension."
+        }
+      ]
+    },
+    {
+      "id": "QUIZ_LEAD",
+      "titre": "Vérification des acquis — Leadership et management",
+      "module": "Leadership et management",
+      "unlock": "apres_module",
+      "offset_jours": 0,
+      "type": "quiz_formatif",
+      "feedback_immédiat": true,
+      "questions": [
+        {
+          "id": "QUIZ_LEAD_01",
+          "enonce": "Quel comportement manifeste une bonne clarté managériale ?",
+          "options": [
+            "Un objectif précis, un délai et un responsable",
+            "Des consignes imprécises",
+            "Une surveillance constante"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "Un cadre clair facilite l’autonomie."
+        },
+        {
+          "id": "QUIZ_LEAD_02",
+          "enonce": "Un ancien collègue devient membre de votre équipe. Que faites-vous ?",
+          "options": [
+            "Vous changez brusquement d’attitude",
+            "Vous privilégiez votre ami",
+            "Vous expliquez votre nouveau rôle et appliquez les mêmes critères"
+          ],
+          "bonne_reponse_index": 2,
+          "explication": "Équité et transparence protègent la relation."
+        },
+        {
+          "id": "QUIZ_LEAD_03",
+          "enonce": "Un collaborateur dit « ce n’est pas mon travail ». Quelle première action ?",
+          "options": [
+            "Sanctionner sans écouter",
+            "Clarifier sa responsabilité et explorer le blocage",
+            "Faire la tâche à sa place"
+          ],
+          "bonne_reponse_index": 1,
+          "explication": "Commencer par comprendre le périmètre de la mission et les faits."
+        }
+      ]
+    },
+    {
+      "id": "QUIZ_PAROLE",
+      "titre": "Vérification des acquis — Prise de parole en public",
+      "module": "Prise de parole en public",
+      "unlock": "apres_module",
+      "offset_jours": 0,
+      "type": "quiz_formatif",
+      "feedback_immédiat": true,
+      "questions": [
+        {
+          "id": "QUIZ_PAROLE_01",
+          "enonce": "Avant de parler face caméra, le plus important est de…",
+          "options": [
+            "Définir son message clé",
+            "Parler sans préparation",
+            "Mémoriser chaque respiration"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "Un message central aide à structurer le propos."
+        },
+        {
+          "id": "QUIZ_PAROLE_02",
+          "enonce": "Après un premier enregistrement peu convaincant, que faire ?",
+          "options": [
+            "Éviter de recommencer",
+            "Choisir un seul axe concret puis refaire",
+            "Se comparer aux autres"
+          ],
+          "bonne_reponse_index": 1,
+          "explication": "Le second essai mesure l’amélioration d’un comportement."
+        },
+        {
+          "id": "QUIZ_PAROLE_03",
+          "enonce": "Quel réflexe aide face au trac ?",
+          "options": [
+            "Accélérer fortement",
+            "Stabiliser sa respiration et marquer une pause",
+            "Éviter le regard"
+          ],
+          "bonne_reponse_index": 1,
+          "explication": "La pause et la respiration favorisent l’aisance."
+        }
+      ]
+    },
+    {
+      "id": "QUIZ_REUN",
+      "titre": "Vérification des acquis — Animation de réunions et communication d'influence",
+      "module": "Animation de réunions et communication d'influence",
+      "unlock": "apres_module",
+      "offset_jours": 0,
+      "type": "quiz_formatif",
+      "feedback_immédiat": true,
+      "questions": [
+        {
+          "id": "QUIZ_REUN_01",
+          "enonce": "Une réunion utile se conclut par…",
+          "options": [
+            "Un nouveau débat vague",
+            "Une décision, un responsable, une échéance",
+            "Une formule motivante seule"
+          ],
+          "bonne_reponse_index": 1,
+          "explication": "La réunion doit déboucher sur une action attribuée."
+        },
+        {
+          "id": "QUIZ_REUN_02",
+          "enonce": "Pour influencer sans imposer, il faut…",
+          "options": [
+            "Comprendre l’objectif de son interlocuteur",
+            "Hausser le ton",
+            "Accumuler des arguments sans écouter"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "L’argumentation part des attentes et objections de l’autre."
+        },
+        {
+          "id": "QUIZ_REUN_03",
+          "enonce": "Quand la réunion s’écarte du sujet, l’animateur devrait…",
+          "options": [
+            "Relancer la question centrale et recadrer le temps",
+            "Laisser tous les sujets ouverts",
+            "Interrompre la séance sans conclusion"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "Le cadrage maintient l’utilité de l’échange."
+        }
+      ]
+    },
+    {
+      "id": "QUIZ_HYGIENE",
+      "titre": "Vérification des acquis — Hygiène de vie et propreté (hommes et femmes)",
+      "module": "Hygiène de vie et propreté (hommes et femmes)",
+      "unlock": "apres_module",
+      "offset_jours": 0,
+      "type": "quiz_formatif",
+      "feedback_immédiat": true,
+      "questions": [
+        {
+          "id": "QUIZ_HYGIENE_01",
+          "enonce": "Une bonne pratique d’hygiène professionnelle consiste à…",
+          "options": [
+            "Adapter sa présentation et ses gestes au poste",
+            "Ignorer les standards du métier",
+            "Partager des informations personnelles des collègues"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "Les habitudes professionnelles suivent le contexte et les règles applicables."
+        },
+        {
+          "id": "QUIZ_HYGIENE_02",
+          "enonce": "Face à une fatigue persistante au travail, il est pertinent de…",
+          "options": [
+            "Faire comme si de rien n’était",
+            "Signaler la difficulté et rechercher des solutions adaptées",
+            "Critiquer publiquement son équipe"
+          ],
+          "bonne_reponse_index": 1,
+          "explication": "Reconnaître une difficulté permet une réponse adaptée."
+        },
+        {
+          "id": "QUIZ_HYGIENE_03",
+          "enonce": "Pour sensibiliser une équipe aux bonnes habitudes, on privilégie…",
+          "options": [
+            "La moquerie",
+            "Un message respectueux et un cadre clair",
+            "Des commentaires personnels humiliants"
+          ],
+          "bonne_reponse_index": 1,
+          "explication": "Le respect et la clarté sont essentiels."
+        }
+      ]
+    },
+    {
+      "id": "SUIVI_J7",
+      "titre": "Quiz de progression — J+7",
+      "module": "Communication interpersonnelle",
+      "unlock": "J+7",
+      "offset_jours": 7,
+      "type": "quiz_formatif",
+      "feedback_immédiat": true,
+      "questions": [
+        {
+          "id": "SUIVI_J7_01",
+          "enonce": "Pour vérifier que l’autre a été compris, quel réflexe utiliser ?",
+          "options": [
+            "Reformuler avec ses mots",
+            "Répéter plus fort",
+            "Couper la parole"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "La reformulation vérifie le sens."
+        },
+        {
+          "id": "SUIVI_J7_02",
+          "enonce": "Un collègue ne partage pas votre point de vue :",
+          "options": [
+            "Vous cherchez ce qu’il voit différemment",
+            "Vous concluez qu’il se trompe",
+            "Vous abandonnez le dossier"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "Un angle différent n’est pas automatiquement une erreur."
+        },
+        {
+          "id": "SUIVI_J7_03",
+          "enonce": "Une difficulté client nécessite d’abord…",
+          "options": [
+            "Une enquête factuelle",
+            "Une promesse irréaliste",
+            "La désignation d’un coupable"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "La précision protège la relation."
+        }
+      ]
+    },
+    {
+      "id": "SUIVI_J14",
+      "titre": "Quiz de progression — J+14",
+      "module": "Leadership et management",
+      "unlock": "J+14",
+      "offset_jours": 14,
+      "type": "quiz_formatif",
+      "feedback_immédiat": true,
+      "questions": [
+        {
+          "id": "SUIVI_J14_01",
+          "enonce": "Quelle qualité relève de C.L.E.F. ?",
+          "options": [
+            "Clarté",
+            "Compétition permanente",
+            "Contrôle absolu"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "C = Clarté."
+        },
+        {
+          "id": "SUIVI_J14_02",
+          "enonce": "Un collaborateur paraît démotivé. Première étape :",
+          "options": [
+            "Décrire les faits et lui demander ce qui a changé",
+            "Le juger sur ses intentions",
+            "Ignorer la situation"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "On questionne des faits, pas une personnalité."
+        },
+        {
+          "id": "SUIVI_J14_03",
+          "enonce": "Après une délégation, le manager doit…",
+          "options": [
+            "Préciser le résultat, fournir les moyens et prévoir un point de suivi",
+            "Tout reprendre immédiatement",
+            "Ne jamais donner de retour"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "L’autonomie se construit avec un cadre."
+        }
+      ]
+    },
+    {
+      "id": "SUIVI_J21",
+      "titre": "Quiz de progression — J+21",
+      "module": "Prise de parole en public",
+      "unlock": "J+21",
+      "offset_jours": 21,
+      "type": "quiz_formatif",
+      "feedback_immédiat": true,
+      "questions": [
+        {
+          "id": "SUIVI_J21_01",
+          "enonce": "Pour présenter un service en 90 secondes, commencer par…",
+          "options": [
+            "Le besoin du public et l’idée centrale",
+            "Une longue liste de détails",
+            "Une formule sans rapport"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "Le public a besoin d’un point d’entrée clair."
+        },
+        {
+          "id": "SUIVI_J21_02",
+          "enonce": "Quel retour est le plus utile après une vidéo ?",
+          "options": [
+            "Une observation concrète et une amélioration réalisable",
+            "Tu es mauvais",
+            "Un classement des collègues"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "Le feedback doit aider à agir."
+        },
+        {
+          "id": "SUIVI_J21_03",
+          "enonce": "Quand le trac augmente, on peut…",
+          "options": [
+            "Ralentir légèrement et respirer",
+            "Accélérer pour finir",
+            "Éviter tout contact visuel"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "Mieux vaut privilégier la maîtrise du rythme."
+        }
+      ]
+    },
+    {
+      "id": "SUIVI_J30",
+      "titre": "Quiz de progression — J+30",
+      "module": "Animation de réunions et communication d'influence",
+      "unlock": "J+30",
+      "offset_jours": 30,
+      "type": "quiz_formatif",
+      "feedback_immédiat": true,
+      "questions": [
+        {
+          "id": "SUIVI_J30_01",
+          "enonce": "À la fin d’une réunion, vérifier…",
+          "options": [
+            "Décision, responsable, date",
+            "Qui a parlé le plus",
+            "Le nombre de diapositives"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "La mise en action est le critère essentiel."
+        },
+        {
+          "id": "SUIVI_J30_02",
+          "enonce": "Pour faire adhérer à une décision, il est utile de…",
+          "options": [
+            "Montrer le sens, écouter les objections, clarifier les responsabilités",
+            "Imposer sans explication",
+            "Éviter les questions"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "Le sens et l’écoute favorisent l’engagement."
+        },
+        {
+          "id": "SUIVI_J30_03",
+          "enonce": "En fin de parcours, la meilleure démarche est de…",
+          "options": [
+            "Choisir une action concrète à continuer",
+            "Considérer que tout est acquis",
+            "Attendre un ordre pour évoluer"
+          ],
+          "bonne_reponse_index": 0,
+          "explication": "L’apprentissage se poursuit par l’action."
+        }
+      ]
+    }
+  ]
+}

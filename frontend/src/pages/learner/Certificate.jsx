@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer, Lock } from 'lucide-react';
+import { ArrowLeft, Printer, Lock, Download } from 'lucide-react';
+import { downloadAttestationPdf } from '../../lib/pdf';
+import { formatMinutes } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { PageLoader } from '../../components/ui';
 import { formatDate } from '../../lib/utils';
 import { BRAND } from '../../config';
@@ -15,8 +17,8 @@ export default function Certificate() {
   useEffect(() => {
     (async () => {
       const [{ data: course }, { data: enr }] = await Promise.all([
-        supabase.from('courses').select('title, estimated_minutes').eq('id', courseId).single(),
-        supabase.from('enrollments').select('completed_at').eq('course_id', courseId).eq('user_id', profile.id).maybeSingle(),
+        db.from('courses').select('title, estimated_minutes').eq('id', courseId).single(),
+        db.from('enrollments').select('completed_at').eq('course_id', courseId).eq('user_id', profile.id).maybeSingle(),
       ]);
       setData({ course, completedAt: enr?.completed_at });
     })();
@@ -41,7 +43,15 @@ export default function Certificate() {
     <div className="min-h-screen bg-slate-100 py-8 print:bg-white print:py-0">
       <div className="no-print mx-auto mb-6 flex max-w-5xl items-center justify-between px-4">
         <Link to={`/app/cours/${courseId}`} className="btn-secondary"><ArrowLeft className="h-4 w-4" /> Retour</Link>
-        <button onClick={() => window.print()} className="btn-primary"><Printer className="h-4 w-4" /> Imprimer / PDF</button>
+        <div className="flex gap-2">
+          <button onClick={() => window.print()} className="btn-secondary"><Printer className="h-4 w-4" /> Imprimer</button>
+          <button
+            onClick={() => downloadAttestationPdf({ name: profile.full_name, courseTitle: data.course.title, company: company?.name, completedAt: data.completedAt, hours: data.course.estimated_minutes ? formatMinutes(data.course.estimated_minutes) : null, certId })}
+            className="btn-primary"
+          >
+            <Download className="h-4 w-4" /> Télécharger (PDF)
+          </button>
+        </div>
       </div>
 
       <div className="mx-auto aspect-[1.414/1] max-w-5xl bg-white p-3 shadow-lift print:shadow-none">

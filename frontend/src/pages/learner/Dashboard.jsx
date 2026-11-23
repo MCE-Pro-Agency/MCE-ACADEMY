@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Trophy, Clock, Target, PlayCircle, Megaphone, ArrowRight, Flame } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { fetchProgressMap } from '../../lib/queries';
 import { PageLoader, ProgressBar, ProgressRing, StatCard, EmptyState } from '../../components/ui';
 import CourseCard, { CourseCover } from '../../components/CourseCard';
 import { formatDuration, formatDate, timeAgo } from '../../lib/utils';
 import { BRAND } from '../../config';
+import { profilStore, lastRun, useLocalStoreVersion } from '../../lib/stores';
+import { profilType } from '../../data/profilModel';
 
 export default function LearnerDashboard() {
   const { profile, company } = useAuth();
@@ -23,9 +25,9 @@ export default function LearnerDashboard() {
     (async () => {
       const [prog, sessions, attempts, ann] = await Promise.all([
         fetchProgressMap(),
-        supabase.from('user_sessions').select('duration_seconds').eq('user_id', profile.id),
-        supabase.from('quiz_attempts').select('lesson_id, score').eq('user_id', profile.id),
-        supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(4),
+        db.from('user_sessions').select('duration_seconds').eq('user_id', profile.id),
+        db.from('quiz_attempts').select('lesson_id, score').eq('user_id', profile.id),
+        db.from('announcements').select('*').order('created_at', { ascending: false }).limit(4),
       ]);
       setProgress(prog);
       setTotalSeconds((sessions.data || []).reduce((s, r) => s + r.duration_seconds, 0));
@@ -37,7 +39,7 @@ export default function LearnerDashboard() {
 
       const ids = Object.keys(prog);
       if (ids.length) {
-        const { data } = await supabase.from('courses').select('*').in('id', ids);
+        const { data } = await db.from('courses').select('*').in('id', ids);
         setCourses(data || []);
         setLessonCounts(Object.fromEntries(ids.map((id) => [id, prog[id].total_lessons])));
       }
@@ -93,6 +95,8 @@ export default function LearnerDashboard() {
           </div>
         </div>
       </section>
+
+      <ProfilBanner userId={profile.id} />
 
       {/* KPI */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -168,5 +172,36 @@ export default function LearnerDashboard() {
         </aside>
       </div>
     </div>
+  );
+}
+
+/* Bandeau « Mon profil pro » */
+function ProfilBanner({ userId }) {
+  useLocalStoreVersion();
+  const p = profilStore.get(userId);
+  const run = lastRun(p);
+  if (run) {
+    const t = profilType(run);
+    return (
+      <Link to="/app/mon-profil" className="card flex items-center gap-4 p-5 transition hover:-translate-y-0.5 hover:shadow-lift">
+        <span className="mce-float flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-3xl">{t.main.emoji}</span>
+        <div className="flex-1">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand-500">Mon profil pro</p>
+          <p className="font-bold text-navy-900">{t.main.nom} · indice {run.result.global_score}/100</p>
+          <p className="text-sm text-slate-500">Revoir mes diagrammes, mes appuis et mon plan d’action 30 jours.</p>
+        </div>
+        <ArrowRight className="h-5 w-5 text-brand-500" />
+      </Link>
+    );
+  }
+  return (
+    <Link to="/app/mon-profil" className="relative flex items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-500 to-indigo-600 p-5 text-white shadow-lift transition hover:-translate-y-0.5">
+      <span className="text-4xl mce-float">🧭</span>
+      <div className="flex-1">
+        <p className="text-lg font-extrabold">{p.draft ? 'Terminez votre profil professionnel' : 'Première étape : votre profil professionnel'}</p>
+        <p className="text-sm text-white/85">Environ 25 minutes pour découvrir vos forces, votre manière de fonctionner et votre plan de progression, avec des diagrammes personnalisés.</p>
+      </div>
+      <span className="btn bg-white text-navy-900 hover:bg-white/90">Commencer</span>
+    </Link>
   );
 }

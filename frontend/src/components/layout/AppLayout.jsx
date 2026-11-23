@@ -2,37 +2,67 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, Award, UserCircle, Users, GraduationCap, ClipboardCheck,
-  Megaphone, Building2, ShieldCheck, LogOut, Menu, X, Eye, Settings, ChevronDown,
+  Megaphone, Building2, ShieldCheck, LogOut, Menu, X, Eye, Settings, ChevronDown, Brain, BookMarked, UserCog, CalendarDays, FolderOpen, CalendarClock,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { cn, ROLE_LABELS } from '../../lib/utils';
 import { Avatar } from '../ui';
 import Logo from './Logo';
+import { isTestOnly } from '../../lib/learnerSpace';
 
+/* Menus par espace, regroupés en rubriques explicites */
 const NAV = {
   learner: [
-    { to: '/app', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
-    { to: '/app/catalogue', label: 'Mes formations', icon: BookOpen },
-    { to: '/app/notes', label: 'Mes notes', icon: Award },
-    { to: '/app/profil', label: 'Mon profil', icon: UserCircle },
+    { title: 'Mon espace', items: [{ to: '/app', label: 'Tableau de bord', icon: LayoutDashboard, end: true }] },
+    { title: 'Apprendre', items: [
+      { to: '/app/programme', label: 'Mon programme', icon: CalendarDays },
+      { to: '/app/catalogue', label: 'Mes modules', icon: BookOpen },
+      { to: '/app/documents', label: 'Mes documents', icon: FolderOpen },
+      { to: '/app/memos', label: 'Mes mémos', icon: BookMarked },
+    ] },
+    { title: 'Mon évolution', items: [
+      { to: '/app/mon-profil', label: 'Mon profil professionnel', icon: Brain },
+      { to: '/app/notes', label: 'Mes notes & certificats', icon: Award },
+    ] },
   ],
   trainer: [
-    { to: '/formateur', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
-    { to: '/formateur/apprenants', label: 'Apprenants', icon: Users },
-    { to: '/formateur/cours', label: 'Cours & modules', icon: GraduationCap },
-    { to: '/formateur/corrections', label: 'Corrections', icon: ClipboardCheck },
-    { to: '/formateur/annonces', label: 'Annonces', icon: Megaphone },
-    { to: '/formateur/entreprise', label: 'Mon entreprise', icon: Settings },
+    { title: 'Pilotage', items: [{ to: '/formateur', label: 'Tableau de bord', icon: LayoutDashboard, end: true }] },
+    { title: 'Mes apprenants', items: [
+      { to: '/formateur/programme', label: 'Programme & déblocage', icon: CalendarClock },
+      { to: '/formateur/apprenants', label: 'Suivi des apprenants', icon: Users },
+      { to: '/formateur/profils', label: 'Profils professionnels', icon: Brain },
+      { to: '/formateur/corrections', label: 'Corrections', icon: ClipboardCheck },
+    ] },
+    { title: 'Mes contenus', items: [
+      { to: '/formateur/cours', label: 'Cours & modules', icon: GraduationCap },
+      { to: '/formateur/documents', label: 'Documents', icon: FolderOpen },
+      { to: '/formateur/annonces', label: 'Annonces', icon: Megaphone },
+    ] },
+    { title: 'Paramètres', items: [{ to: '/formateur/entreprise', label: 'Mon entreprise', icon: Settings }] },
   ],
   admin: [
-    { to: '/admin', label: "Vue d'ensemble", icon: LayoutDashboard, end: true },
-    { to: '/admin/entreprises', label: 'Entreprises', icon: Building2 },
-    { to: '/admin/utilisateurs', label: 'Utilisateurs', icon: ShieldCheck },
+    { title: 'Pilotage', items: [{ to: '/admin', label: "Vue d'ensemble", icon: LayoutDashboard, end: true }] },
+    { title: 'Organisation', items: [
+      { to: '/admin/entreprises', label: 'Entreprises clientes', icon: Building2 },
+      { to: '/admin/formateurs', label: 'Formateurs', icon: UserCog },
+      { to: '/admin/apprenants', label: 'Apprenants', icon: Users },
+      { to: '/admin/utilisateurs', label: 'Tous les comptes', icon: ShieldCheck },
+    ] },
+    { title: 'Suivi pédagogique', items: [
+      { to: '/admin/programme', label: 'Programme & évolution', icon: CalendarClock },
+      { to: '/admin/profils', label: 'Profils professionnels', icon: Brain },
+      { to: '/admin/documents', label: 'Documents', icon: FolderOpen },
+    ] },
   ],
 };
 
-const AREA_TITLES = { learner: 'Espace apprenant', trainer: 'Espace formateur', admin: 'Administration' };
+/* Espace apprenant en mode « test uniquement » : seul le test est proposé */
+const LEARNER_TEST_NAV = [
+  { title: 'Mon espace', items: [{ to: '/app/mon-profil', label: 'Mon test de profil', icon: Brain }] },
+];
+
+const AREA_TITLES = { learner: 'Espace apprenant', trainer: 'Espace formateur', admin: 'Administration MCE' };
 
 export default function AppLayout({ area }) {
   const { profile, company, isAdmin, isTrainer, signOut, activeCompanyId, setActiveCompanyId } = useAuth();
@@ -44,10 +74,10 @@ export default function AppLayout({ area }) {
   useEffect(() => setOpen(false), [location.pathname]);
 
   useEffect(() => {
-    if (isAdmin) supabase.from('companies').select('id, name').order('name').then(({ data }) => setCompanies(data || []));
+    if (isAdmin) db.from('companies').select('id, name').order('name').then(({ data }) => setCompanies(data || []));
   }, [isAdmin]);
 
-  const items = NAV[area] || [];
+  const items = area === 'learner' && profile?.role === 'learner' && isTestOnly(company) ? LEARNER_TEST_NAV : NAV[area] || [];
   const activeCompanyName = isAdmin ? companies.find((c) => c.id === activeCompanyId)?.name : company?.name;
 
   const handleLogout = async () => {
@@ -86,40 +116,42 @@ export default function AppLayout({ area }) {
       </div>
 
       <nav className="scroll-thin flex-1 space-y-1 overflow-y-auto px-3">
-        {items.map(({ to, label, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            className={({ isActive }) =>
-              cn(
-                'group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition',
-                isActive ? 'bg-brand-500 text-white shadow-sm' : 'text-navy-200 hover:bg-navy-800 hover:text-white'
-              )
-            }
-          >
-            <Icon className="h-[18px] w-[18px]" />
-            {label}
-          </NavLink>
+        {items.map((group) => (
+          <div key={group.title} className="pb-2">
+            <p className="px-3.5 pb-1.5 pt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-navy-400">{group.title}</p>
+            {group.items.map(({ to, label, icon: Icon, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  cn(
+                    'group mb-0.5 flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition',
+                    isActive ? 'bg-brand-500 text-white shadow-sm' : 'text-navy-200 hover:bg-navy-800 hover:text-white'
+                  )
+                }
+              >
+                <Icon className="h-[18px] w-[18px]" />
+                {label}
+              </NavLink>
+            ))}
+          </div>
         ))}
 
         {(isAdmin || isTrainer) && (
-          <div className="pt-5">
-            <p className="px-3.5 pb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-navy-400">Changer d'espace</p>
+          <div className="mt-3 border-t border-navy-800 pt-3">
+            <p className="px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-navy-400">Raccourcis</p>
             {isAdmin && area !== 'admin' && (
-              <NavLink to="/admin" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white">
-                <ShieldCheck className="h-4 w-4" /> Administration
-              </NavLink>
+              <NavLink to="/admin" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Retour à l’administration</NavLink>
             )}
-            {area !== 'trainer' && (
-              <NavLink to="/formateur" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white">
-                <GraduationCap className="h-4 w-4" /> Espace formateur
-              </NavLink>
+            {isAdmin && area === 'admin' && (
+              <NavLink to="/formateur" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><GraduationCap className="h-4 w-4" /> Gérer les cours d’une entreprise</NavLink>
             )}
-            {area !== 'learner' && isTrainer && (
-              <NavLink to="/app/catalogue" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white">
-                <Eye className="h-4 w-4" /> Aperçu apprenant
-              </NavLink>
+            {area !== 'learner' && (
+              <NavLink to="/app" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><Eye className="h-4 w-4" /> Voir comme un apprenant</NavLink>
+            )}
+            {area === 'learner' && (
+              <NavLink to={isAdmin ? '/admin' : '/formateur'} className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Quitter l’aperçu apprenant</NavLink>
             )}
           </div>
         )}
@@ -130,7 +162,7 @@ export default function AppLayout({ area }) {
           <Avatar name={profile?.full_name} src={profile?.avatar_url} size="sm" />
           <NavLink to={area === 'admin' ? '/admin/profil' : area === 'trainer' ? '/formateur/profil' : '/app/profil'} className="min-w-0 flex-1 hover:opacity-90">
             <p className="truncate text-sm font-semibold text-white">{profile?.full_name}</p>
-            <p className="truncate text-xs text-navy-300">{ROLE_LABELS[profile?.role]} · Mon profil</p>
+            <p className="truncate text-xs text-navy-300">{ROLE_LABELS[profile?.role]} · Mon compte</p>
           </NavLink>
           <button onClick={handleLogout} title="Se déconnecter" className="rounded-lg p-2 text-navy-300 hover:bg-navy-800 hover:text-white">
             <LogOut className="h-4 w-4" />

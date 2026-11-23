@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Logo from '../components/layout/Logo';
-import { supabase } from '../lib/supabase';
+import { db } from '../lib/db';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -15,7 +15,7 @@ export default function ResetPassword() {
     if (password.length < 8) return toast.error('8 caractères minimum.');
     if (password !== confirm) return toast.error('Les mots de passe ne correspondent pas.');
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
+    const { error } = await db.auth.updateUser({ password });
     setLoading(false);
     if (error) return toast.error(error.message);
     toast.success('Mot de passe mis à jour !');

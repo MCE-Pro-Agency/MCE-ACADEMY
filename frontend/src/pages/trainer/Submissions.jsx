@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ClipboardCheck, Paperclip, Send } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { Avatar, Badge, EmptyState, Field, Markdown, Modal, PageLoader, Tabs } from '../../components/ui';
 import { formatDateTime } from '../../lib/utils';
 
@@ -21,7 +21,7 @@ export default function Submissions() {
   const [form, setForm] = useState({ grade: '', feedback: '' });
 
   const load = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('exercise_submissions')
       .select('*, learner:profiles!exercise_submissions_user_id_fkey(full_name, email), lesson:lessons(title, content), course:courses!inner(title, company_id)')
       .eq('course.company_id', activeCompanyId)
@@ -43,7 +43,7 @@ export default function Submissions() {
   const save = async (status) => {
     const grade = form.grade === '' ? null : Number(form.grade);
     if (status === 'graded' && (grade === null || grade < 0 || grade > 20)) return toast.error('Saisissez une note entre 0 et 20.');
-    const { error } = await supabase
+    const { error } = await db
       .from('exercise_submissions')
       .update({ grade: status === 'graded' ? grade : null, feedback: form.feedback, status, graded_by: profile.id, graded_at: new Date().toISOString() })
       .eq('id', current.id);

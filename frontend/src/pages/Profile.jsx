@@ -2,7 +2,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Camera, KeyRound, Save } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, uploadMedia } from '../lib/supabase';
+import { db, uploadMedia } from '../lib/db';
 import { Avatar, Badge, Field } from '../components/ui';
 import { ROLE_LABELS, formatDate } from '../lib/utils';
 
@@ -15,7 +15,7 @@ export default function Profile() {
   const save = async (e) => {
     e.preventDefault();
     setSaving(true);
-    const { error } = await supabase.from('profiles').update(form).eq('id', profile.id);
+    const { error } = await db.from('profiles').update(form).eq('id', profile.id);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success('Profil mis à jour');
@@ -27,7 +27,7 @@ export default function Profile() {
     if (!file) return;
     try {
       const url = await uploadMedia(file, 'avatars');
-      await supabase.from('profiles').update({ avatar_url: url }).eq('id', profile.id);
+      await db.from('profiles').update({ avatar_url: url }).eq('id', profile.id);
       toast.success('Photo mise à jour');
       refreshProfile();
     } catch (err) {
@@ -39,7 +39,7 @@ export default function Profile() {
     e.preventDefault();
     if (pwd.password.length < 8) return toast.error('8 caractères minimum.');
     if (pwd.password !== pwd.confirm) return toast.error('Les mots de passe ne correspondent pas.');
-    const { error } = await supabase.auth.updateUser({ password: pwd.password });
+    const { error } = await db.auth.updateUser({ password: pwd.password });
     if (error) return toast.error(error.message);
     setPwd({ password: '', confirm: '' });
     toast.success('Mot de passe modifié');

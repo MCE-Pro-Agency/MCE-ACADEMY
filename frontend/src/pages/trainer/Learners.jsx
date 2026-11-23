@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { UserPlus, Upload, Download, Search, MoreVertical, KeyRound, UserX, UserCheck, Trash2, Eye, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { api } from '../../lib/api';
 import { Avatar, Badge, CredentialBox, EmptyState, Field, Modal, PageLoader, ProgressBar, Spinner } from '../../components/ui';
 import { downloadCSV, formatDuration, normalizeImportRow, parseCSV, scoreColor, timeAgo, num } from '../../lib/utils';
@@ -23,8 +23,8 @@ export default function Learners() {
 
   const load = async () => {
     const [l, c] = await Promise.all([
-      supabase.rpc('company_learner_stats', { p_company: activeCompanyId }),
-      supabase.from('courses').select('id, title, is_published').eq('company_id', activeCompanyId).order('created_at'),
+      db.rpc('company_learner_stats', { p_company: activeCompanyId }),
+      db.from('courses').select('id, title, is_published').eq('company_id', activeCompanyId).order('created_at'),
     ]);
     setLearners(l.data || []);
     setCourses(c.data || []);

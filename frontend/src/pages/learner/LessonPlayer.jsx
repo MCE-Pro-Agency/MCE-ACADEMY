@@ -6,15 +6,17 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, uploadMedia } from '../../lib/supabase';
+import { db, uploadMedia } from '../../lib/db';
 import { fetchCourseTree, fetchLessonProgress, flattenLessons } from '../../lib/queries';
 import { Badge, Markdown, Modal, PageLoader, ProgressBar, Spinner } from '../../components/ui';
 import { cn, formatDateTime, LESSON_TYPES, toEmbedUrl, scoreColor } from '../../lib/utils';
+import { moduleLockState, profilStore, profilDone, useLocalStoreVersion } from '../../lib/stores';
 
 export default function LessonPlayer() {
   const { courseId, lessonId } = useParams();
   const navigate = useNavigate();
-  const { profile, setActiveLesson } = useAuth();
+  const { profile, setActiveLesson, isLearner } = useAuth();
+  useLocalStoreVersion();
   const [course, setCourse] = useState(null);
   const [lesson, setLesson] = useState(null);
   const [progress, setProgress] = useState({});
@@ -29,7 +31,7 @@ export default function LessonPlayer() {
         const [c, p] = await Promise.all([fetchCourseTree(courseId), fetchLessonProgress(courseId, profile.id)]);
         setCourse(c);
         setProgress(p);
-        await supabase
+        await db
           .from('enrollments')
           .upsert({ user_id: profile.id, course_id: courseId }, { onConflict: 'user_id,course_id', ignoreDuplicates: true });
       } catch {
@@ -43,7 +45,7 @@ export default function LessonPlayer() {
   useEffect(() => {
     setLesson(null);
     setSidebar(false);
-    supabase
+    db
       .from('lessons')
       .select('*')
       .eq('id', lessonId)
@@ -70,7 +72,7 @@ export default function LessonPlayer() {
     async (id = lessonId) => {
       if (progress[id]?.completed) return;
       setMarking(true);
-      const { error } = await supabase.from('lesson_progress').upsert(
+      const { error } = await db.from('lesson_progress').upsert(
         { user_id: profile.id, lesson_id: id, course_id: courseId, completed: true, completed_at: new Date().toISOString(), last_viewed_at: new Date().toISOString() },
         { onConflict: 'user_id,lesson_id' }
       );
@@ -92,6 +94,28 @@ export default function LessonPlayer() {
 
   if (!course) return <PageLoader label="Ouverture de la formation…" />;
 
+  // Module verrouillé : l'apprenant ne peut pas ouvrir la leçon
+  const hasProfil = profilDone(profilStore.get(profile.id));
+  const lockOf = (mi) => (isLearner ? moduleLockState(course, mi, progress, hasProfil) : { locked: false });
+  const curIndex = course.modules.findIndex((m) => m.lessons.some((l) => l.id === lessonId));
+  const curLock = curIndex >= 0 ? lockOf(curIndex) : { locked: false };
+  if (curLock.locked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-navy-900 to-navy-700 p-6">
+        <div className="max-w-md rounded-3xl bg-white p-10 text-center shadow-lift animate-fade-in">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-4xl mce-float">🔒</div>
+          <h1 className="mt-5 text-2xl font-extrabold text-navy-900">Module verrouillé</h1>
+          <p className="mt-1 font-semibold text-navy-700">{course.modules[curIndex].title}</p>
+          <p className="mt-3 text-sm text-slate-500">{curLock.reason}</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <Link to={`/app/cours/${courseId}`} className="btn-primary">Retour au parcours</Link>
+            {curLock.kind === 'profil' && <Link to="/app/mon-profil" className="btn-brand">Passer le test de profil</Link>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const Curriculum = (
     <div className="flex h-full flex-col bg-white">
       <div className="border-b border-slate-100 p-5">
@@ -106,7 +130,7 @@ export default function LessonPlayer() {
         {course.modules.map((m, mi) => (
           <div key={m.id}>
             <p className="sticky top-0 z-10 bg-slate-50 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-navy-600">
-              {mi + 1}. {m.title}
+              {lockOf(mi).locked ? '🔒 ' : `${mi + 1}. `}{m.title}
             </p>
             {m.lessons.map((l) => {
               const T = LESSON_TYPES[l.type];
@@ -291,8 +315,8 @@ function QuizBlock({ lesson, onPassed }) {
   useEffect(() => {
     (async () => {
       const [{ data: qs }, { data: att }] = await Promise.all([
-        supabase.from('quiz_questions').select('*').eq('lesson_id', lesson.id).order('position'),
-        supabase.from('quiz_attempts').select('score, passed').eq('lesson_id', lesson.id).eq('user_id', profile.id),
+        db.from('quiz_questions').select('*').eq('lesson_id', lesson.id).order('position'),
+        db.from('quiz_attempts').select('score, passed').eq('lesson_id', lesson.id).eq('user_id', profile.id),
       ]);
       setQuestions(qs || []);
       setAttempts(att?.length || 0);
@@ -304,7 +328,7 @@ function QuizBlock({ lesson, onPassed }) {
   const submit = async () => {
     if (Object.keys(answers).length < questions.length) return toast.error('Répondez à toutes les questions.');
     setSubmitting(true);
-    const { data, error } = await supabase.rpc('submit_quiz', { p_lesson_id: lesson.id, p_answers: answers });
+    const { data, error } = await db.rpc('submit_quiz', { p_lesson_id: lesson.id, p_answers: answers });
     setSubmitting(false);
     if (error) return toast.error(error.message);
     setResult(data);
@@ -419,7 +443,7 @@ function ExerciseBlock({ lesson, onSubmitted }) {
   const [editing, setEditing] = useState(true);
 
   useEffect(() => {
-    supabase
+    db
       .from('exercise_submissions')
       .select('*')
       .eq('lesson_id', lesson.id)
@@ -451,7 +475,7 @@ function ExerciseBlock({ lesson, onSubmitted }) {
   const submit = async () => {
     if (!content.trim() && !fileUrl) return toast.error('Rédigez une réponse ou joignez un fichier.');
     setSaving(true);
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('exercise_submissions')
       .upsert(
         { user_id: profile.id, lesson_id: lesson.id, course_id: lesson.course_id, content, file_url: fileUrl || null, submitted_at: new Date().toISOString() },

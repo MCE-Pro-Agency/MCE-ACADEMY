@@ -2,24 +2,30 @@
   "name": "mce-academy-server",
   "version": "1.0.0",
   "private": true,
-  "description": "API Node.js de MCE Academy (gestion des comptes, entreprises, import d'apprenants)",
+  "description": "API Node.js + MySQL de MCE Academy",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "seed:content": "node scripts/seed.js --replace-content",
+    "db:init": "node scripts/init-db.js",
+    "setup": "node scripts/init-db.js && node scripts/seed.js"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "express-rate-limit": "^7.4.1",
     "helmet": "^8.0.0",
-    "morgan": "^1.10.0"
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.0",
+    "multer": "^2.5.0",
+    "mysql2": "^3.24.6"
   }
 }

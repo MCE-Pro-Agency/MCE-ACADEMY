@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Award, HelpCircle, PenLine, Target, Star } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { Badge, EmptyState, PageLoader, ProgressBar, StatCard, Tabs } from '../../components/ui';
 import { formatDate, scoreColor } from '../../lib/utils';
 
@@ -16,12 +16,12 @@ export default function Grades() {
   useEffect(() => {
     (async () => {
       const [a, s] = await Promise.all([
-        supabase
+        db
           .from('quiz_attempts')
           .select('*, lesson:lessons(title), course:courses(title)')
           .eq('user_id', profile.id)
           .order('created_at', { ascending: false }),
-        supabase
+        db
           .from('exercise_submissions')
           .select('*, lesson:lessons(title), course:courses(title)')
           .eq('user_id', profile.id)

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { db } from '../lib/db';
+import { syncStores, clearStores } from '../lib/stores';
 
 const AuthContext = createContext(null);
 const HEARTBEAT_SECONDS = 60;
@@ -17,13 +18,15 @@ export function AuthProvider({ children }) {
     if (!userId) {
       setProfile(null);
       setCompany(null);
+      clearStores();
       return;
     }
-    const { data } = await supabase.from('profiles').select('*, company:companies(*)').eq('id', userId).single();
+    const { data } = await db.from('profiles').select('*, company:companies(*)').eq('id', userId).single();
     if (data) {
       const { company: c, ...p } = data;
       setProfile(p);
       setCompany(c || null);
+      syncStores().catch(() => {});
     } else {
       setProfile(null);
     }
@@ -31,16 +34,16 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(async ({ data }) => {
+    db.auth.getSession().then(async ({ data }) => {
       if (!mounted) return;
       setSession(data.session);
       await loadProfile(data.session?.user?.id);
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+    const { data: sub } = db.auth.onAuthStateChange((event, s) => {
       setSession(s);
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
-        // éviter d'appeler supabase dans le callback (deadlock connu)
+        // différé pour laisser le rendu se terminer
         setTimeout(() => loadProfile(s?.user?.id), 0);
       }
     });
@@ -55,7 +58,7 @@ export function AuthProvider({ children }) {
     if (!session || !profile) return;
     const ping = (seconds) => {
       if (document.visibilityState !== 'visible') return;
-      supabase.rpc('heartbeat', { p_lesson_id: activeLessonRef.current, p_seconds: seconds }).then(() => {});
+      db.rpc('heartbeat', { p_lesson_id: activeLessonRef.current, p_seconds: seconds }).then(() => {});
     };
     ping(0);
     const id = setInterval(() => ping(HEARTBEAT_SECONDS), HEARTBEAT_SECONDS * 1000);
@@ -67,7 +70,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signIn = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const { error } = await db.auth.signInWithPassword({ email: email.trim(), password });
     if (error) {
       if (/invalid/i.test(error.message)) throw new Error('Email ou mot de passe incorrect.');
       if (/banned/i.test(error.message)) throw new Error('Votre compte est désactivé. Contactez votre formateur.');
@@ -76,7 +79,7 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await db.auth.signOut();
     setProfile(null);
     setCompany(null);
   };

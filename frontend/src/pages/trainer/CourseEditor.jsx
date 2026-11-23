@@ -5,11 +5,35 @@ import {
   ArrowLeft, Plus, ChevronUp, ChevronDown, Pencil, Trash2, Eye, Save, Image as ImageIcon, Upload,
   LayoutList, Info, Users, CheckCircle2, GripVertical, X,
 } from 'lucide-react';
-import { supabase, uploadMedia } from '../../lib/supabase';
+import { db, uploadMedia } from '../../lib/db';
 import { useAuth } from '../../contexts/AuthContext';
 import { Avatar, Badge, Field, Markdown, Modal, PageLoader, Spinner, Tabs, Toggle } from '../../components/ui';
 import { CourseCover } from '../../components/CourseCard';
 import { cn, LESSON_TYPES, LEVEL_LABELS } from '../../lib/utils';
+import { moduleStore, MODULE_MODES, useLocalStoreVersion } from '../../lib/stores';
+import ModuleJourney from '../../components/ModuleJourney';
+
+/* Réglage du déblocage d'un module (table module_settings) */
+function ModuleUnlock({ module, index }) {
+  const s = moduleStore.get(module.id);
+  const set = (patch) => { moduleStore.set(module.id, patch); toast.success('Déblocage mis à jour'); };
+  const modes = Object.entries(MODULE_MODES).filter(([k]) => k !== 'sequential' || index > 0);
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-white px-4 py-3 text-sm">
+      <span className="mr-1 text-xs font-bold uppercase tracking-wider text-slate-400">🔓 Déblocage</span>
+      {modes.map(([k, m]) => (
+        <button key={k} onClick={() => set({ mode: k })} title={m.hint}
+          className={cn('rounded-full px-3 py-1 text-xs font-semibold ring-1 transition', s.mode === k ? 'bg-navy-800 text-white ring-navy-800' : 'bg-white text-slate-600 ring-slate-200 hover:ring-brand-300')}>
+          {m.label}
+        </button>
+      ))}
+      {s.mode === 'date' && (
+        <input type="date" defaultValue={s.opensAt} onChange={(e) => set({ opensAt: e.target.value })} className="input w-auto py-1 text-xs" />
+      )}
+      <span className="ml-auto"><Toggle checked={s.requiresProfile} onChange={(v) => set({ requiresProfile: v })} label={<span className="text-xs">Test de profil exigé</span>} /></span>
+    </div>
+  );
+}
 
 export default function CourseEditor() {
   const { courseId } = useParams();
@@ -20,8 +44,8 @@ export default function CourseEditor() {
 
   const load = async () => {
     const [{ data: c }, { data: mods }] = await Promise.all([
-      supabase.from('courses').select('*').eq('id', courseId).single(),
-      supabase.from('modules').select('*, lessons(*)').eq('course_id', courseId).order('position'),
+      db.from('courses').select('*').eq('id', courseId).single(),
+      db.from('modules').select('*, lessons(*)').eq('course_id', courseId).order('position'),
     ]);
     setCourse(c);
     setModules((mods || []).map((m) => ({ ...m, lessons: (m.lessons || []).sort((a, b) => a.position - b.position) })));
@@ -54,7 +78,7 @@ export default function CourseEditor() {
           <button
             className={course.is_published ? 'btn-secondary' : 'btn-brand'}
             onClick={async () => {
-              await supabase.from('courses').update({ is_published: !course.is_published }).eq('id', course.id);
+              await db.from('courses').update({ is_published: !course.is_published }).eq('id', course.id);
               toast.success(course.is_published ? 'Repassé en brouillon' : 'Cours publié !');
               load();
             }}
@@ -97,27 +121,28 @@ export default function CourseEditor() {
 
 /* ================= CONTENU ================= */
 function ContentTab({ course, modules, reload, onEditLesson }) {
+  useLocalStoreVersion({ refresh: true });
   const addModule = async () => {
-    const { error } = await supabase.from('modules').insert({ course_id: course.id, title: `Module ${modules.length + 1}`, position: modules.length });
+    const { error } = await db.from('modules').insert({ course_id: course.id, title: `Module ${modules.length + 1}`, position: modules.length });
     if (error) return toast.error(error.message);
     reload();
   };
 
   const updateModule = async (id, patch) => {
-    const { error } = await supabase.from('modules').update(patch).eq('id', id);
+    const { error } = await db.from('modules').update(patch).eq('id', id);
     if (error) toast.error(error.message);
   };
 
   const deleteModule = async (m) => {
     if (!confirm(`Supprimer le module « ${m.title} » et ses ${m.lessons.length} leçon(s) ?`)) return;
-    await supabase.from('modules').delete().eq('id', m.id);
+    await db.from('modules').delete().eq('id', m.id);
     reload();
   };
 
   const swap = async (table, a, b) => {
     await Promise.all([
-      supabase.from(table).update({ position: b.position }).eq('id', a.id),
-      supabase.from(table).update({ position: a.position }).eq('id', b.id),
+      db.from(table).update({ position: b.position }).eq('id', a.id),
+      db.from(table).update({ position: a.position }).eq('id', b.id),
     ]);
     reload();
   };
@@ -138,12 +163,25 @@ function ContentTab({ course, modules, reload, onEditLesson }) {
 
   const deleteLesson = async (l) => {
     if (!confirm(`Supprimer la leçon « ${l.title} » ?`)) return;
-    await supabase.from('lessons').delete().eq('id', l.id);
+    await db.from('lessons').delete().eq('id', l.id);
     reload();
   };
 
+  const journey = modules.map((m, i) => {
+    const st = moduleStore.get(m.id);
+    const reason = st.requiresProfile ? 'Après le test de profil' : st.mode === 'closed' ? 'Fermé' : st.mode === 'date' ? (st.opensAt ? `Le ${new Date(st.opensAt).toLocaleDateString('fr-FR')}` : 'Date à définir') : st.mode === 'sequential' ? 'Après le module précédent' : null;
+    return { title: m.title, pct: 0, reason, state: st.mode === 'open' && !st.requiresProfile ? 'open' : 'locked' };
+  });
+
   return (
     <div className="space-y-4">
+      {modules.length > 0 && (
+        <div className="card p-5">
+          <p className="eyebrow">Aperçu du parcours apprenant</p>
+          <p className="mb-2 text-sm text-slate-500">Choisissez pour chaque module quand il s’ouvre : tout de suite, à une date (lundi → vendredi), quand le précédent est terminé, ou manuellement.</p>
+          <ModuleJourney items={journey} />
+        </div>
+      )}
       {modules.map((m, mi) => (
         <div key={m.id} className="card overflow-hidden">
           <div className="flex items-start gap-3 border-b border-slate-100 bg-slate-50/70 p-4">
@@ -168,6 +206,7 @@ function ContentTab({ course, modules, reload, onEditLesson }) {
             </div>
           </div>
 
+          <ModuleUnlock module={m} index={mi} />
           <ul className="divide-y divide-slate-100">
             {m.lessons.map((l, li) => {
               const T = LESSON_TYPES[l.type];
@@ -223,9 +262,9 @@ function LessonModal({ moduleId, lesson, courseId, position, onClose, onSaved })
   useEffect(() => {
     if (!lesson || lesson.type !== 'quiz') return;
     (async () => {
-      const { data: qs } = await supabase.from('quiz_questions').select('*').eq('lesson_id', lesson.id).order('position');
+      const { data: qs } = await db.from('quiz_questions').select('*').eq('lesson_id', lesson.id).order('position');
       const ids = (qs || []).map((q) => q.id);
-      const { data: ans } = ids.length ? await supabase.from('quiz_answers').select('*').in('question_id', ids) : { data: [] };
+      const { data: ans } = ids.length ? await db.from('quiz_answers').select('*').in('question_id', ids) : { data: [] };
       const amap = Object.fromEntries((ans || []).map((a) => [a.question_id, a]));
       setQuestions((qs || []).map((q) => ({ id: q.id, question: q.question, options: q.options, correct: amap[q.id]?.correct_index ?? 0, explanation: amap[q.id]?.explanation || '' })));
     })();
@@ -268,29 +307,29 @@ function LessonModal({ moduleId, lesson, courseId, position, onClose, onSaved })
       const payload = { ...form, duration_minutes: Number(form.duration_minutes) || 0, passing_score: Number(form.passing_score) || 70, module_id: moduleId, course_id: courseId };
       let lessonId = lesson?.id;
       if (isNew) {
-        const { data, error } = await supabase.from('lessons').insert({ ...payload, position }).select().single();
+        const { data, error } = await db.from('lessons').insert({ ...payload, position }).select().single();
         if (error) throw error;
         lessonId = data.id;
       } else {
-        const { error } = await supabase.from('lessons').update(payload).eq('id', lessonId);
+        const { error } = await db.from('lessons').update(payload).eq('id', lessonId);
         if (error) throw error;
       }
 
       if (form.type === 'quiz') {
-        if (removedIds.length) await supabase.from('quiz_questions').delete().in('id', removedIds);
+        if (removedIds.length) await db.from('quiz_questions').delete().in('id', removedIds);
         for (const [i, q] of questions.entries()) {
           const options = q.options.filter((o) => o.trim());
           const correct = Math.min(q.correct, options.length - 1);
           let qid = q.id;
           if (qid) {
-            const { error } = await supabase.from('quiz_questions').update({ question: q.question, options, position: i }).eq('id', qid);
+            const { error } = await db.from('quiz_questions').update({ question: q.question, options, position: i }).eq('id', qid);
             if (error) throw error;
           } else {
-            const { data, error } = await supabase.from('quiz_questions').insert({ lesson_id: lessonId, question: q.question, options, position: i }).select().single();
+            const { data, error } = await db.from('quiz_questions').insert({ lesson_id: lessonId, question: q.question, options, position: i }).select().single();
             if (error) throw error;
             qid = data.id;
           }
-          const { error: aErr } = await supabase.from('quiz_answers').upsert({ question_id: qid, correct_index: correct, explanation: q.explanation || null });
+          const { error: aErr } = await db.from('quiz_answers').upsert({ question_id: qid, correct_index: correct, explanation: q.explanation || null });
           if (aErr) throw aErr;
         }
       }
@@ -450,7 +489,7 @@ function InfoTab({ course, reload }) {
   const save = async (e) => {
     e.preventDefault();
     setSaving(true);
-    const { error } = await supabase.from('courses').update({ ...form, estimated_minutes: Number(form.estimated_minutes) || 0 }).eq('id', course.id);
+    const { error } = await db.from('courses').update({ ...form, estimated_minutes: Number(form.estimated_minutes) || 0 }).eq('id', course.id);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success('Informations enregistrées');
@@ -504,8 +543,8 @@ function EnrollTab({ course }) {
 
   const load = async () => {
     const [{ data: l }, { data: e }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, email, job_title, is_active').eq('company_id', activeCompanyId).eq('role', 'learner').order('full_name'),
-      supabase.from('enrollments').select('user_id').eq('course_id', course.id),
+      db.from('profiles').select('id, full_name, email, job_title, is_active').eq('company_id', activeCompanyId).eq('role', 'learner').order('full_name'),
+      db.from('enrollments').select('user_id').eq('course_id', course.id),
     ]);
     setLearners(l || []);
     setEnrolled(new Set((e || []).map((x) => x.user_id)));
@@ -516,9 +555,9 @@ function EnrollTab({ course }) {
 
   const toggle = async (uid) => {
     if (enrolled.has(uid)) {
-      await supabase.from('enrollments').delete().eq('course_id', course.id).eq('user_id', uid);
+      await db.from('enrollments').delete().eq('course_id', course.id).eq('user_id', uid);
     } else {
-      await supabase.from('enrollments').insert({ course_id: course.id, user_id: uid });
+      await db.from('enrollments').insert({ course_id: course.id, user_id: uid });
     }
     load();
   };
@@ -526,7 +565,7 @@ function EnrollTab({ course }) {
   const enrollAll = async () => {
     const rows = learners.filter((l) => !enrolled.has(l.id)).map((l) => ({ course_id: course.id, user_id: l.id }));
     if (!rows.length) return;
-    const { error } = await supabase.from('enrollments').insert(rows);
+    const { error } = await db.from('enrollments').insert(rows);
     if (error) return toast.error(error.message);
     toast.success(`${rows.length} apprenant(s) inscrit(s)`);
     load();

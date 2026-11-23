@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import Logo from '../components/layout/Logo';
 import { Spinner } from '../components/ui';
 import { useAuth, homePathForRole } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { db } from '../lib/db';
 import { BRAND } from '../config';
 
 export default function Login() {
@@ -32,7 +32,7 @@ export default function Login() {
     setLoading(true);
     try {
       if (forgot) {
-        const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        const { error: err } = await db.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: `${window.location.origin}/reinitialiser`,
         });
         if (err) throw err;

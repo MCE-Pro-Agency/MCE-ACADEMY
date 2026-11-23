@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { fetchProgressMap } from '../../lib/queries';
 import CourseCard from '../../components/CourseCard';
 import { EmptyState, PageLoader, Tabs } from '../../components/ui';
@@ -17,7 +17,7 @@ export default function Catalog() {
   const [category, setCategory] = useState('');
 
   const load = async () => {
-    let query = supabase.from('courses').select('*, lessons(count)').order('created_at', { ascending: false });
+    let query = db.from('courses').select('*, lessons(count)').order('created_at', { ascending: false });
     // Aperçu formateur/admin : uniquement les cours publiés de l'entreprise gérée
     if (!isLearner) query = query.eq('is_published', true).eq('company_id', activeCompanyId || profile.company_id);
     const [{ data }, prog] = await Promise.all([query, fetchProgressMap()]);
@@ -31,7 +31,7 @@ export default function Catalog() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const enroll = async (course) => {
-    const { error } = await supabase
+    const { error } = await db
       .from('enrollments')
       .upsert({ user_id: profile.id, course_id: course.id }, { onConflict: 'user_id,course_id', ignoreDuplicates: true });
     if (error) return toast.error(error.message);

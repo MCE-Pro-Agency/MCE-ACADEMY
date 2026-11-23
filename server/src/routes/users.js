@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, requireRole, canManageCompany } from '../middleware/auth.js';
-import { supabaseAdmin } from '../supabase.js';
+import { one, query, uuid } from '../db.js';
 import { createAccount, updateAccount, deleteAccount } from '../services/accounts.js';
 import { ah, HttpError, ROLES } from '../utils.js';
 
@@ -8,8 +8,8 @@ const router = Router();
 router.use(requireAuth, requireRole('admin', 'trainer'));
 
 async function loadTarget(id) {
-  const { data, error } = await supabaseAdmin.from('profiles').select('*').eq('id', id).single();
-  if (error || !data) throw new HttpError(404, 'Utilisateur introuvable.');
+  const data = await one('SELECT id, role, company_id, email FROM profiles WHERE id = ?', [id]);
+  if (!data) throw new HttpError(404, 'Utilisateur introuvable.');
   return data;
 }
 
@@ -133,11 +133,9 @@ router.delete(
 
 async function enrollUsers(userIds, courseIds, companyId) {
   // on ne garde que les cours de l'entreprise
-  const { data: courses } = await supabaseAdmin.from('courses').select('id').in('id', courseIds).eq('company_id', companyId);
-  const rows = [];
-  for (const u of userIds) for (const c of courses || []) rows.push({ user_id: u, course_id: c.id });
-  if (rows.length) {
-    await supabaseAdmin.from('enrollments').upsert(rows, { onConflict: 'user_id,course_id', ignoreDuplicates: true });
+  const courses = courseIds.length ? await query('SELECT id FROM courses WHERE id IN (?) AND company_id = ?', [courseIds, companyId]) : [];
+  for (const u of userIds) {
+    for (const c of courses) await query('INSERT IGNORE INTO enrollments (id, user_id, course_id) VALUES (?, ?, ?)', [uuid(), u, c.id]);
   }
 }
 

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   Building2, GraduationCap, BarChart3, ClipboardCheck, PlayCircle, ShieldCheck, ArrowRight,
-  Mic, Users, MessagesSquare, Presentation, Sparkles, CheckCircle2, Clock, Star,
+  Mic, Users, MessagesSquare, Presentation, Sparkles, CheckCircle2, Star, Brain, UserCog, User,
 } from 'lucide-react';
 import Logo from '../components/layout/Logo';
 import { ProgressBar } from '../components/ui';
@@ -13,7 +13,7 @@ const FEATURES = [
   { icon: GraduationCap, title: 'Parcours structurés', text: 'Cours, modules et leçons : textes, vidéos, documents, quiz et exercices pratiques.' },
   { icon: BarChart3, title: 'Progression visible', text: 'Barres de progression, temps passé, notes et certificats : chacun voit ses progrès.' },
   { icon: ClipboardCheck, title: 'Évaluation & feedback', text: 'Quiz corrigés automatiquement, exercices notés sur 20 avec retour personnalisé du formateur.' },
-  { icon: Clock, title: 'Suivi du temps', text: 'Le formateur observe le temps de connexion et l’assiduité de chaque apprenant.' },
+  { icon: Brain, title: 'Profil professionnel', text: 'Un test de 25 minutes qui dresse le portrait de chaque apprenant : 10 compétences, style, motivations et plan d’action.' },
   { icon: ShieldCheck, title: 'Rôles & sécurité', text: 'Apprenant, formateur, administrateur : chacun accède uniquement à ce qui le concerne.' },
 ];
 
@@ -23,6 +23,12 @@ const MODULES = [
   { icon: MessagesSquare, title: 'Communication interpersonnelle', text: 'Écouter, reformuler, coopérer' },
   { icon: Presentation, title: 'Animation de réunions', text: 'Influencer, décider et faire avancer' },
   { icon: Sparkles, title: 'Hygiène et propreté', text: 'Santé, présentation et habitudes professionnelles' },
+];
+
+const SPACES = [
+  { icon: ShieldCheck, role: 'Administrateur MCE', color: 'from-navy-800 to-navy-950', items: ['Crée les entreprises clientes', 'Gère formateurs et apprenants', 'Voit toute l’activité et tous les profils'] },
+  { icon: UserCog, role: 'Formateur', color: 'from-brand-600 to-navy-800', items: ['Construit cours et modules', 'Ouvre les modules au bon moment', 'Suit, corrige et accompagne ses apprenants'] },
+  { icon: User, role: 'Apprenant', color: 'from-indigo-500 to-brand-600', items: ['Passe son test de profil', 'Suit ses formations et ses quiz', 'Voit son évolution et ses documents'] },
 ];
 
 const CLEF = [
@@ -88,8 +94,8 @@ export default function Landing() {
             <div className="card relative rotate-1 p-6 shadow-lift">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="eyebrow">Programme professionnel</p>
-                  <p className="mt-1 font-display text-xl font-bold text-navy-900">VIGILUS IMPACT</p>
+                  <p className="eyebrow">Parcours en cours</p>
+                  <p className="mt-1 font-display text-xl font-bold text-navy-900">Leadership & communication</p>
                 </div>
                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">68 % terminé</span>
               </div>
@@ -119,8 +125,8 @@ export default function Landing() {
             <div className="card absolute -bottom-8 -left-8 flex items-center gap-3 p-4 shadow-lift">
               <div className="rounded-xl bg-brand-50 p-2.5 text-brand-600"><PlayCircle className="h-6 w-6" /></div>
               <div>
-                <p className="text-sm font-bold text-navy-900">Miroir vocal</p>
-                <p className="text-xs text-slate-500">Leçon suivante · 8 min</p>
+                <p className="text-sm font-bold text-navy-900">Profil : Le Mobilisateur 🚀</p>
+                <p className="text-xs text-slate-500">Indice 74/100 · plan 30 jours</p>
               </div>
             </div>
           </div>
@@ -152,14 +158,14 @@ export default function Landing() {
         <div className="mx-auto max-w-7xl px-4 sm:px-8">
           <div className="grid gap-12 lg:grid-cols-5">
             <div className="lg:col-span-2">
-              <p className="eyebrow">Notre progression</p>
-              <h2 className="mt-3 text-3xl font-bold text-navy-900 sm:text-4xl">Cinq modules pour faire la différence</h2>
+              <p className="eyebrow">Nos programmes</p>
+              <h2 className="mt-3 text-3xl font-bold text-navy-900 sm:text-4xl">Des formations qui changent les pratiques</h2>
               <p className="mt-4 text-slate-500">
                 Notre fil conducteur : <strong className="text-navy-800">comprendre, pratiquer, observer, améliorer</strong>.
-                Des apports courts, des situations vécues et des cas métiers inspirés de vos réalités.
+                Des apports courts, des situations vécues et des cas métiers adaptés à chaque entreprise.
               </p>
               <ul className="mt-6 space-y-3 text-sm text-navy-700">
-                {['Mises en situation et jeux de rôle', 'Passages filmés avant / après', 'Défis J+7 · J+14 · J+21 · J+30'].map((t) => (
+                {['Test de profil professionnel en amont', 'Mises en situation et passages filmés', 'Suivi J+7 · J+14 · J+21 · J+30'].map((t) => (
                   <li key={t} className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-brand-500" /> {t}</li>
                 ))}
               </ul>
@@ -177,6 +183,25 @@ export default function Landing() {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* TROIS ESPACES */}
+      <section className="mx-auto max-w-7xl px-4 pt-24 sm:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="eyebrow">Une plateforme, trois espaces</p>
+          <h2 className="mt-3 text-3xl font-bold text-navy-900 sm:text-4xl">Chacun voit exactement ce qui le concerne</h2>
+        </div>
+        <div className="mt-14 grid gap-6 lg:grid-cols-3">
+          {SPACES.map(({ icon: Icon, role, color, items }) => (
+            <div key={role} className={`rounded-3xl bg-gradient-to-br ${color} p-7 text-white shadow-lift transition hover:-translate-y-1`}>
+              <span className="inline-flex rounded-2xl bg-white/15 p-3"><Icon className="h-6 w-6" /></span>
+              <h3 className="mt-5 text-xl font-extrabold">{role}</h3>
+              <ul className="mt-4 space-y-2 text-sm text-white/85">
+                {items.map((t) => <li key={t} className="flex gap-2"><CheckCircle2 className="h-4 w-4 shrink-0 text-white" /> {t}</li>)}
+              </ul>
+            </div>
+          ))}
         </div>
       </section>
 

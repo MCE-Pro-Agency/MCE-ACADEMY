@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Megaphone, Send, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/db';
 import { EmptyState, Field, PageLoader } from '../../components/ui';
 import { formatDateTime } from '../../lib/utils';
 
@@ -12,7 +12,7 @@ export default function Announcements() {
   const [form, setForm] = useState({ title: '', body: '' });
 
   const load = async () => {
-    const { data } = await supabase
+    const { data } = await db
       .from('announcements')
       .select('*, author:profiles(full_name)')
       .eq('company_id', activeCompanyId)
@@ -25,7 +25,7 @@ export default function Announcements() {
 
   const publish = async (e) => {
     e.preventDefault();
-    const { error } = await supabase.from('announcements').insert({ ...form, company_id: activeCompanyId, author_id: profile.id });
+    const { error } = await db.from('announcements').insert({ ...form, company_id: activeCompanyId, author_id: profile.id });
     if (error) return toast.error(error.message);
     setForm({ title: '', body: '' });
     toast.success('Annonce publiée sur le tableau de bord des apprenants');
@@ -34,7 +34,7 @@ export default function Announcements() {
 
   const remove = async (id) => {
     if (!confirm('Supprimer cette annonce ?')) return;
-    await supabase.from('announcements').delete().eq('id', id);
+    await db.from('announcements').delete().eq('id', id);
     load();
   };
 
