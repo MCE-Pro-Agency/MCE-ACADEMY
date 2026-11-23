@@ -54,9 +54,12 @@ export default function Landing() {
             <a href="#methode" className="hover:text-brand-600">Méthode C.L.E.F.</a>
             <a href="#contact" className="hover:text-brand-600">Contact</a>
           </nav>
-          <Link to={spaceLink} className="btn-primary">
-            {session ? 'Mon espace' : 'Se connecter'} <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div className="flex items-center gap-2">
+            {!session && <Link to="/inscription" className="btn-ghost hidden sm:inline-flex">Créer mon compte</Link>}
+            <Link to={spaceLink} className="btn-primary">
+              {session ? 'Mon espace' : 'Se connecter'} <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -81,9 +84,11 @@ export default function Landing() {
               <Link to={spaceLink} className="btn-brand px-6 py-3 text-base">
                 Accéder à mon espace <ArrowRight className="h-5 w-5" />
               </Link>
-              <a href="#contact" className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
-                Demander une démo
-              </a>
+              {!session && (
+                <Link to="/inscription" className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
+                  Créer mon compte apprenant
+                </Link>
+              )}
             </div>
             <p className="mt-8 text-sm font-medium tracking-wide text-navy-300">{BRAND.motto}</p>
           </div>
