@@ -4,11 +4,14 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
+import { isSupabaseConfigured } from './lib/db';
+import ConfigMissing from './pages/ConfigMissing';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
+    {isSupabaseConfigured ? (
+      <BrowserRouter>
         <AuthProvider>
           <App />
           <Toaster
@@ -20,5 +23,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           />
         </AuthProvider>
       </BrowserRouter>
+    ) : (
+      <ConfigMissing />
+    )}
   </React.StrictMode>
 );

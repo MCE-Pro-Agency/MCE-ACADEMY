@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { one, query, uuid } from '../db.js';
+import { supabaseAdmin } from '../supabase.js';
 import { createAccount, deleteAccount } from '../services/accounts.js';
 import { ah, HttpError, slugify } from '../utils.js';
 
@@ -15,13 +15,15 @@ router.post(
     if (!name?.trim()) throw new HttpError(400, "Le nom de l'entreprise est requis.");
 
     let slug = slugify(name) || 'entreprise';
-    if (await one('SELECT id FROM companies WHERE slug = ?', [slug])) slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+    const { data: existing } = await supabaseAdmin.from('companies').select('id').eq('slug', slug).maybeSingle();
+    if (existing) slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
 
-    const id = uuid();
-    await query('INSERT INTO companies (id, name, slug, sector, contact_email, max_learners, logo_url) VALUES (?, ?, ?, ?, ?, ?, ?)', [
-      id, name.trim(), slug, sector || null, contact_email || null, max_learners || null, logo_url || null,
-    ]);
-    const company = await one('SELECT * FROM companies WHERE id = ?', [id]);
+    const { data: company, error } = await supabaseAdmin
+      .from('companies')
+      .insert({ name: name.trim(), slug, sector, contact_email, max_learners: max_learners || null, logo_url })
+      .select()
+      .single();
+    if (error) throw new HttpError(400, error.message);
 
     let trainerResult = null;
     if (trainer?.email) {
@@ -48,9 +50,12 @@ router.delete(
   '/:id',
   ah(async (req, res) => {
     const { id } = req.params;
-    const users = await query("SELECT id FROM profiles WHERE company_id = ? AND role <> 'admin'", [id]);
-    for (const u of users) await deleteAccount(u.id);
-    await query('DELETE FROM companies WHERE id = ?', [id]);
+    const { data: users } = await supabaseAdmin.from('profiles').select('id, role').eq('company_id', id);
+    for (const u of users || []) {
+      if (u.role !== 'admin') await deleteAccount(u.id);
+    }
+    const { error } = await supabaseAdmin.from('companies').delete().eq('id', id);
+    if (error) throw new HttpError(400, error.message);
     res.json({ ok: true, deleted_users: users?.length || 0 });
   })
 );

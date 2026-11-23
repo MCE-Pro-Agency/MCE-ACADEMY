@@ -6,12 +6,11 @@ import { PM, PROFIL_STEPS } from '../../data/profilModel';
 import ProfilReport from '../../components/profil/ProfilReport';
 import ProfilDownload from '../../components/profil/ProfilDownload';
 import { ProfilQuestionnaire } from '../../components/profil/Questionnaires';
-import { isTestOnly } from '../../lib/learnerSpace';
 
 export default function ProfilPro() {
   const { profile, company, isLearner } = useAuth();
   useLocalStoreVersion();
-  const testOnly = isLearner && isTestOnly(company);
+  const showWelcome = isLearner;
   const [taking, setTaking] = useState(false);
   const p = profilStore.get(profile.id);
   const done = profilDone(p);
@@ -21,12 +20,12 @@ export default function ProfilPro() {
 
   return (
     <div className="space-y-8">
-      {testOnly && (
+      {showWelcome && (
         <div className="flex items-start gap-3 rounded-2xl bg-brand-50 p-4 text-sm text-navy-800 ring-1 ring-brand-100">
           <span className="text-xl">🧭</span>
           <p>
             <b>Bienvenue {profile.full_name?.split(' ')[0]} !</b> Pour commencer, votre seule étape est ce <b>test de profil professionnel</b> (environ 25 minutes, enregistré au fur et à mesure).
-            {done ? ' Merci, votre test est terminé : votre formateur vous ouvrira bientôt votre programme, vos modules et vos documents.' : ' Votre programme, vos modules et vos documents seront ouverts ensuite par votre formateur.'}
+            {done ? ' Merci, votre test est terminé : votre formateur et l’équipe MCE peuvent maintenant consulter votre rapport.' : ' Votre formateur et l’équipe MCE verront votre rapport une fois le test terminé.'}
           </p>
         </div>
       )}

@@ -10,7 +10,6 @@ export const demoCompany = {
   sector: 'Commerce & services',
   contact_email: 'contact@vigilus.demo',
   max_learners: 50,
-  learner_space: 'test', // seul le test de profil est ouvert au départ
 };
 
 export const demoTrainer = {

@@ -1,10 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/layout/AppLayout';
-import LearnerGate from './components/LearnerGate';
 
 import Landing from './pages/Landing';
 import Login from './pages/Login';
+import Signup from './pages/Signup';
 import ResetPassword from './pages/ResetPassword';
 import NotFound from './pages/NotFound';
 import Profile from './pages/Profile';
@@ -32,20 +32,19 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/inscription" element={<Signup />} />
       <Route path="/reinitialiser" element={<ResetPassword />} />
 
       {/* Espace apprenant : test de profil professionnel uniquement.
           Les formations, modules, programme et exercices sont développés dans l'espace Formateur
           (version précédente des pages apprenant : commit 4580c6d de la branche espace-apprenant). */}
       <Route element={<ProtectedRoute roles={['learner', 'trainer', 'admin']} />}>
-       <Route element={<LearnerGate />}>
         <Route element={<AppLayout area="learner" />}>
           <Route path="/app" element={<Navigate to="/app/mon-profil" replace />} />
           <Route path="/app/mon-profil" element={<ProfilPro />} />
           <Route path="/app/profil" element={<Profile />} />
           <Route path="/app/*" element={<Navigate to="/app/mon-profil" replace />} />
         </Route>
-       </Route>
       </Route>
 
       {/* Espace formateur : gestion de l'entreprise */}

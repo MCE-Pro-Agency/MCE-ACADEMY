@@ -1,26 +1,13 @@
 -- =====================================================================
---  MCE ACADEMY — Migration Supabase n° 2 : espace apprenant
---  À exécuter APRÈS supabase/schema.sql, dans Supabase > SQL Editor.
---
---  Reprend en PostgreSQL ce qui a été ajouté pendant la phase MySQL :
---    1. companies.learner_space   : 'test' (test de profil seul) ou 'complet'
---    2. module_settings           : déblocage des modules (fermé / ouvert / date / progressif)
---    3. profile_assessments       : test de profil professionnel (passations, brouillon, observations)
---    4. documents                 : espace « Mes documents » (supports communs + documents personnels)
---    5. Verrouillage côté base    : contenu d'un module fermé invisible pour les apprenants
---    6. RPC module_progress       : progression module par module (suivi formateur / admin)
---
---  Équivalent MySQL : database/schema.sql + server/src/policies.js + server/src/routes/rpc.js
---  ⚠️ Script écrit à partir des règles MySQL testées, mais pas encore exécuté sur Supabase :
---     le lancer d'abord sur un projet de test.
+--  MCE ACADEMY — Migration Supabase n° 3 (FACULTATIVE) : déblocage des modules et documents
+--  Concerne l'espace Formateur. À exécuter APRÈS schema.sql et 002_test_profil.sql,
+--  uniquement si l'équipe Formateur garde ces fonctions :
+--    - module_settings : déblocage des modules (fermé / ouvert / date / progressif)
+--    - documents       : supports communs et documents personnels des apprenants
+--    - verrouillage    : contenu d'un module fermé invisible pour les apprenants
+--    - RPC module_progress : progression module par module
+--  Écrit à partir des règles testées sur MySQL ; pas encore exécuté sur Supabase.
 -- =====================================================================
-
--- ---------------------------------------------------------------------
--- 1. Ouverture de l'espace apprenant par entreprise
--- ---------------------------------------------------------------------
-alter table public.companies
-  add column if not exists learner_space text not null default 'complet'
-  check (learner_space in ('test', 'complet'));
 
 -- ---------------------------------------------------------------------
 -- 2. Tables
@@ -31,15 +18,6 @@ create table if not exists public.module_settings (
   opens_at          date,
   requires_profile  boolean not null default false,
   updated_at        timestamptz not null default now()
-);
-
-create table if not exists public.profile_assessments (
-  user_id     uuid primary key references public.profiles(id) on delete cascade,
-  runs        jsonb not null default '[]'::jsonb,
-  draft       jsonb,
-  retake      boolean not null default false,
-  comment     text,
-  updated_at  timestamptz not null default now()
 );
 
 create table if not exists public.documents (
@@ -60,10 +38,6 @@ create index if not exists documents_user_idx on public.documents(user_id);
 drop trigger if exists module_settings_touch on public.module_settings;
 create trigger module_settings_touch before update on public.module_settings
   for each row execute function public.touch_updated_at();
-drop trigger if exists profile_assessments_touch on public.profile_assessments;
-create trigger profile_assessments_touch before update on public.profile_assessments
-  for each row execute function public.touch_updated_at();
-
 -- ---------------------------------------------------------------------
 -- 3. Fonctions d'aide
 -- ---------------------------------------------------------------------
@@ -86,27 +60,6 @@ $$;
 create or replace function public.module_course(p_module uuid)
 returns uuid language sql stable security definer set search_path = public as $$
   select course_id from public.modules where id = p_module
-$$;
-
--- Remplace la version de schema.sql : un apprenant ne voit les cours que si
--- l'espace complet de son entreprise est ouvert (learner_space = 'complet').
-create or replace function public.can_view_course(p_course uuid)
-returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1
-    from public.courses c
-    join public.companies co on co.id = c.company_id
-    join public.profiles p on p.id = auth.uid()
-    where c.id = p_course
-      and p.is_active
-      and (
-        p.role = 'admin'
-        or (
-          co.is_active and c.company_id = p.company_id
-          and (p.role = 'trainer' or (c.is_published and co.learner_space = 'complet'))
-        )
-      )
-  )
 $$;
 
 -- ---------------------------------------------------------------------
@@ -147,7 +100,6 @@ create trigger submissions_lock before insert or update on public.exercise_submi
 -- 5. RLS des nouvelles tables
 -- ---------------------------------------------------------------------
 alter table public.module_settings enable row level security;
-alter table public.profile_assessments enable row level security;
 alter table public.documents enable row level security;
 
 -- MODULE_SETTINGS : lisible par ceux qui voient le cours, modifiable par le formateur / admin
@@ -159,41 +111,8 @@ create policy module_settings_write on public.module_settings for all
   using (public.can_manage_company(public.course_company(public.module_course(module_id))))
   with check (public.can_manage_company(public.course_company(public.module_course(module_id))));
 
--- PROFILE_ASSESSMENTS : l'apprenant gère son test ; formateur / admin voient et commentent
-drop policy if exists profile_assessments_select on public.profile_assessments;
-create policy profile_assessments_select on public.profile_assessments for select
-  using (user_id = auth.uid() or public.can_manage_company((select company_id from public.profiles where id = user_id)));
-drop policy if exists profile_assessments_insert on public.profile_assessments;
-create policy profile_assessments_insert on public.profile_assessments for insert
-  with check (user_id = auth.uid() or public.can_manage_company((select company_id from public.profiles where id = user_id)));
-drop policy if exists profile_assessments_update on public.profile_assessments;
-create policy profile_assessments_update on public.profile_assessments for update
-  using (user_id = auth.uid() or public.can_manage_company((select company_id from public.profiles where id = user_id)));
-drop policy if exists profile_assessments_delete on public.profile_assessments;
-create policy profile_assessments_delete on public.profile_assessments for delete
-  using (public.can_manage_company((select company_id from public.profiles where id = user_id)));
-
--- L'apprenant ne peut ni écrire l'observation du formateur, ni se rouvrir une passation
-create or replace function public.protect_profile_assessment()
-returns trigger language plpgsql security definer set search_path = public as $$
-begin
-  if not public.can_manage_company((select company_id from public.profiles where id = new.user_id)) then
-    if tg_op = 'INSERT' then
-      new.comment := null;
-      new.retake := false;
-    else
-      new.comment := old.comment;
-      new.retake := case when new.retake then old.retake else false end;
-    end if;
-  end if;
-  return new;
-end $$;
-drop trigger if exists profile_assessments_protect on public.profile_assessments;
-create trigger profile_assessments_protect before insert or update on public.profile_assessments
-  for each row execute function public.protect_profile_assessment();
-
--- DOCUMENTS : apprenant → documents disponibles de son entreprise (communs ou à son nom),
---             uniquement si l'espace complet est ouvert ; formateur / admin → gestion
+-- DOCUMENTS : apprenant → documents disponibles de son entreprise (communs ou à son nom) ;
+--             formateur / admin → gestion
 drop policy if exists documents_select on public.documents;
 create policy documents_select on public.documents for select
   using (
@@ -202,7 +121,6 @@ create policy documents_select on public.documents for select
       company_id = public.auth_company()
       and is_available
       and (user_id is null or user_id = auth.uid())
-      and exists (select 1 from public.companies co where co.id = company_id and co.learner_space = 'complet')
     )
   );
 drop policy if exists documents_write on public.documents;

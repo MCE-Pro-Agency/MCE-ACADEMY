@@ -8,6 +8,7 @@ import { profilStore, profilDone, lastRun, firstRun, useLocalStoreVersion } from
 import { PM, DIM, DIM_COLORS, groupStats, runValues, profilType, dimOf } from '../../data/profilModel';
 import { RadarChart, BandDistribution, StyleBubbles, AxesChart, TeamHeatmap, ScoreGauge } from '../../components/profil/Charts';
 import ProfilReport from '../../components/profil/ProfilReport';
+import JoinCodeCard from '../../components/JoinCodeCard';
 import ProfilDownload from '../../components/profil/ProfilDownload';
 import { Avatar, Badge, EmptyState, Modal, PageLoader, StatCard } from '../../components/ui';
 import { downloadCSV, formatDate } from '../../lib/utils';
@@ -68,6 +69,7 @@ export default function ProfilsSuivi({ scope = 'trainer' }) {
 
   return (
     <div className="space-y-8">
+      {(scope === 'trainer' || companyFilter) && <JoinCodeCard companyId={scope === 'trainer' ? activeCompanyId : companyFilter} />}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow">Profils professionnels</p>

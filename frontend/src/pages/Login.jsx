@@ -95,9 +95,11 @@ export default function Login() {
             )}
           </form>
 
-          <p className="mt-8 text-center text-xs text-slate-400">
-            Votre compte est créé par votre formateur ou par MCE Academy.<br />
-            Pas encore d’accès ? <a className="font-semibold text-brand-600" href={`mailto:${BRAND.contactEmail}`}>Contactez-nous</a>
+          <p className="mt-8 text-center text-sm text-slate-500">
+            Pas encore de compte ? <Link to="/inscription" className="font-semibold text-brand-600">Inscrivez-vous avec le code de votre entreprise</Link>
+          </p>
+          <p className="mt-2 text-center text-xs text-slate-400">
+            Un souci d’accès ? <a className="font-semibold text-brand-600" href={`mailto:${BRAND.contactEmail}`}>Contactez-nous</a>
           </p>
         </div>
         <Link to="/" className="text-center text-xs text-slate-400 hover:text-navy-700">← Retour au site</Link>

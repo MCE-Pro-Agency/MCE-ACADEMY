@@ -4,35 +4,17 @@
  *  - si SEED_DEMO=true : entreprise VIGILUS + formateur + 3 apprenants + 2 cours complets
  *
  * Usage : cd server && npm run seed
- *         npm run seed:content   → remplace le contenu des cours de démonstration
  */
 import 'dotenv/config';
-import { pool, one, query, uuid, toSqlDate } from '../src/db.js';
+import { supabaseAdmin } from '../src/supabase.js';
 import { createAccount } from '../src/services/accounts.js';
-
-/** Insère une ligne et la renvoie (JSON et dates convertis) */
-async function ins(table, row) {
-  const data = { id: uuid(), ...row };
-  for (const [k, v] of Object.entries(data)) {
-    if (v && typeof v === 'object' && !(v instanceof Date)) data[k] = JSON.stringify(v);
-    else if (typeof v === 'boolean') data[k] = Number(v);
-    else if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v)) data[k] = toSqlDate(v);
-  }
-  await query(`INSERT INTO ${table} SET ?`, [data]);
-  return one(`SELECT * FROM ${table} WHERE id = ?`, [data.id]);
-}
-import { demoCompany, demoTrainer, demoLearners, demoCourses, demoAnnouncements, demoDocuments } from './seed-data.js';
-
-/* --replace-content : remplace les cours de démonstration (les comptes, profils et documents sont conservés) */
-const REPLACE = process.argv.includes('--replace-content');
-/* Nombre de modules ouverts au départ (jour 1 et jour 2 en démo) ; les suivants restent fermés
-   et sont ouverts jour après jour par le formateur. */
-const OPEN_AT_START = 2;
+import { demoCompany, demoTrainer, demoLearners, demoCourses, demoAnnouncements } from './seed-data.js';
 
 const log = (...a) => console.log('•', ...a);
 
 async function findProfileByEmail(email) {
-  return one('SELECT id, email, role, company_id FROM profiles WHERE email = ?', [email.toLowerCase()]);
+  const { data } = await supabaseAdmin.from('profiles').select('*').eq('email', email.toLowerCase()).maybeSingle();
+  return data;
 }
 
 async function ensureAccount(input) {
@@ -58,9 +40,11 @@ async function seedAdmin() {
 
 async function seedDemo(adminId) {
   // Entreprise
-  let company = await one('SELECT * FROM companies WHERE slug = ?', [demoCompany.slug]);
+  let { data: company } = await supabaseAdmin.from('companies').select('*').eq('slug', demoCompany.slug).maybeSingle();
   if (!company) {
-    company = await ins('companies', demoCompany);
+    const res = await supabaseAdmin.from('companies').insert(demoCompany).select().single();
+    if (res.error) throw res.error;
+    company = res.data;
     log(`Entreprise créée : ${company.name}`);
   } else {
     log(`Entreprise déjà présente : ${company.name}`);
@@ -70,19 +54,8 @@ async function seedDemo(adminId) {
   const learners = [];
   for (const l of demoLearners) learners.push(await ensureAccount({ ...l, role: 'learner', company_id: company.id }));
 
-  // Documents de l'espace « Mes documents »
-  const docs = await one('SELECT COUNT(*) AS count FROM documents WHERE company_id = ? AND user_id IS NULL', [company.id]);
-  if (!docs.count) {
-    for (const d of demoDocuments) await ins('documents', { ...d, company_id: company.id, created_by: trainer.id });
-    log(`${demoDocuments.length} documents ajoutés à « Mes documents »`);
-  }
-
   // Cours
-  if (REPLACE) {
-    const r = await query('DELETE FROM courses WHERE company_id = ?', [company.id]);
-    log(`${r.affectedRows} cours supprimé(s) avant réimport du contenu`);
-  }
-  const { count } = await one('SELECT COUNT(*) AS count FROM courses WHERE company_id = ?', [company.id]);
+  const { count } = await supabaseAdmin.from('courses').select('id', { count: 'exact', head: true }).eq('company_id', company.id);
   if (count > 0) {
     log('Des cours existent déjà pour cette entreprise : contenu non dupliqué.');
     return;
@@ -91,23 +64,43 @@ async function seedDemo(adminId) {
   const createdCourses = [];
   for (const course of demoCourses) {
     const { modules, ...courseData } = course;
-    const c = await ins('courses', { ...courseData, company_id: company.id, created_by: trainer.id || adminId });
+    const { data: c, error } = await supabaseAdmin
+      .from('courses')
+      .insert({ ...courseData, company_id: company.id, created_by: trainer.id || adminId })
+      .select()
+      .single();
+    if (error) throw error;
     createdCourses.push({ course: c, lessons: [] });
     log(`Cours créé : ${c.title}`);
 
     for (const [mi, mod] of modules.entries()) {
-      const m = await ins('modules', { course_id: c.id, title: mod.title, description: mod.description || null, position: mi });
-      // Déblocage jour après jour : seuls les premiers modules sont ouverts, le formateur ouvre les suivants
-      await query('INSERT INTO module_settings (module_id, mode) VALUES (?, ?)', [m.id, mi < OPEN_AT_START ? 'open' : 'closed']);
+      const { data: m, error: mErr } = await supabaseAdmin
+        .from('modules')
+        .insert({ course_id: c.id, title: mod.title, description: mod.description || null, position: mi })
+        .select()
+        .single();
+      if (mErr) throw mErr;
 
       for (const [li, lesson] of mod.lessons.entries()) {
         const { questions, ...lessonData } = lesson;
-        const l = await ins('lessons', { ...lessonData, module_id: m.id, course_id: c.id, position: li });
+        const { data: l, error: lErr } = await supabaseAdmin
+          .from('lessons')
+          .insert({ ...lessonData, module_id: m.id, course_id: c.id, position: li })
+          .select()
+          .single();
+        if (lErr) throw lErr;
         createdCourses.at(-1).lessons.push(l);
 
         for (const [qi, qq] of (questions || []).entries()) {
-          const qRow = await ins('quiz_questions', { lesson_id: l.id, question: qq.question, options: qq.options, position: qi });
-          await query('INSERT INTO quiz_answers SET ?', [{ question_id: qRow.id, correct_index: qq.correct, explanation: qq.explanation || null }]);
+          const { data: qRow, error: qErr } = await supabaseAdmin
+            .from('quiz_questions')
+            .insert({ lesson_id: l.id, question: qq.question, options: qq.options, position: qi })
+            .select()
+            .single();
+          if (qErr) throw qErr;
+          await supabaseAdmin
+            .from('quiz_answers')
+            .insert({ question_id: qRow.id, correct_index: qq.correct, explanation: qq.explanation });
         }
       }
     }
@@ -116,21 +109,26 @@ async function seedDemo(adminId) {
   // Inscriptions : tous les apprenants à tous les cours
   const enrollRows = [];
   for (const l of learners) for (const { course } of createdCourses) enrollRows.push({ user_id: l.id, course_id: course.id });
-  for (const r of enrollRows) await query('INSERT IGNORE INTO enrollments (id, user_id, course_id) VALUES (?, ?, ?)', [uuid(), r.user_id, r.course_id]);
+  await supabaseAdmin.from('enrollments').upsert(enrollRows, { onConflict: 'user_id,course_id', ignoreDuplicates: true });
   log(`${enrollRows.length} inscriptions créées`);
 
   // Un peu d'activité de démo pour que les tableaux de bord soient parlants
   const main = createdCourses[0];
-  const progressPlan = [9, 5, 2]; // nb de leçons terminées par apprenant
+  const progressPlan = [8, 4, 1]; // nb de leçons terminées par apprenant
   for (const [i, learner] of learners.entries()) {
     const done = main.lessons.slice(0, progressPlan[i] || 0);
     if (done.length) {
-      for (const l of done) {
-        await query(
-          'INSERT IGNORE INTO lesson_progress (user_id, lesson_id, course_id, completed, completed_at, time_spent_seconds) VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP(3), ?)',
-          [learner.id, l.id, main.course.id, 240 + Math.floor(Math.random() * 400)]
-        );
-      }
+      await supabaseAdmin.from('lesson_progress').upsert(
+        done.map((l) => ({
+          user_id: learner.id,
+          lesson_id: l.id,
+          course_id: main.course.id,
+          completed: true,
+          completed_at: new Date().toISOString(),
+          time_spent_seconds: 240 + Math.floor(Math.random() * 400),
+        })),
+        { onConflict: 'user_id,lesson_id' }
+      );
     }
     const sessions = [];
     for (let d = 0; d < 7; d++) {
@@ -146,21 +144,21 @@ async function seedDemo(adminId) {
         });
       }
     }
-    for (const se of sessions) await ins('user_sessions', se);
-    await query('UPDATE profiles SET last_seen_at = ? WHERE id = ?', [toSqlDate(new Date(Date.now() - i * 86400000)), learner.id]);
+    if (sessions.length) await supabaseAdmin.from('user_sessions').insert(sessions);
+    await supabaseAdmin.from('profiles').update({ last_seen_at: new Date(Date.now() - i * 86400000).toISOString() }).eq('id', learner.id);
   }
 
   // Une note de quiz et un exercice corrigé pour le premier apprenant
   const quiz = main.lessons.find((l) => l.type === 'quiz');
   const exercise = main.lessons.find((l) => l.type === 'exercise');
   if (quiz) {
-    await ins('quiz_attempts', {
+    await supabaseAdmin.from('quiz_attempts').insert({
       user_id: learners[0].id, lesson_id: quiz.id, course_id: main.course.id,
       score: 75, correct_count: 3, total_questions: 4, passed: true, answers: {},
     });
   }
   if (exercise) {
-    await ins('exercise_submissions', {
+    await supabaseAdmin.from('exercise_submissions').insert({
       user_id: learners[0].id, lesson_id: exercise.id, course_id: main.course.id,
       content: "1. Je comprends votre agacement, c'est légitime.\n2. Si je résume : retard de 5 jours et commande incomplète.\n3. Je vous fais livrer les articles manquants sous 48h, frais offerts.\n4. Est-ce que cette solution vous convient ?",
       status: 'graded', grade: 16, feedback: 'Très bonne structure ! Pensez à donner votre nom et un contact direct pour rassurer le client.',
@@ -168,8 +166,9 @@ async function seedDemo(adminId) {
     });
   }
 
-  const ann = await one('SELECT COUNT(*) AS count FROM announcements WHERE company_id = ?', [company.id]);
-  if (!ann.count) for (const a of demoAnnouncements) await ins('announcements', { ...a, company_id: company.id, author_id: trainer.id });
+  await supabaseAdmin.from('announcements').insert(
+    demoAnnouncements.map((a) => ({ ...a, company_id: company.id, author_id: trainer.id }))
+  );
 
   log('Données de démonstration prêtes ✅');
 }
@@ -188,9 +187,7 @@ async function main() {
   }
 }
 
-main()
-  .then(() => pool.end())
-  .catch((e) => {
-    console.error('❌ Erreur :', e.message || e);
-    process.exit(1);
-  });
+main().catch((e) => {
+  console.error('❌ Erreur :', e.message || e);
+  process.exit(1);
+});

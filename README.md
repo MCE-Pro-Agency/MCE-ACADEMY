@@ -34,100 +34,68 @@ Elle fonctionne comme Udemy ou OpenClassrooms, mais en **multi-entreprises** : c
 
 ```
 mce-academie/
-├── database/
-│   └── schema.sql          ← base MySQL complète (16 tables)
-├── server/                 ← API Node.js / Express (seule à parler à MySQL)
-│   ├── src/
-│   │   ├── index.js        ← point d'entrée
-│   │   ├── db.js           ← connexion MySQL (pool)
-│   │   ├── policies.js     ← règles d'accès par rôle et par table
-│   │   ├── query.js        ← moteur de requêtes (lecture, relations, écriture)
-│   │   ├── middleware/auth.js   ← sessions JWT
-│   │   ├── services/accounts.js ← comptes (mots de passe chiffrés bcrypt)
-│   │   └── routes/         ← auth, db, rpc (fonctions métier), upload, users, companies
-│   ├── scripts/            ← init-db.js (crée la base), seed.js (admin + démo)
-│   └── uploads/            ← fichiers envoyés (couvertures, documents, rendus)
+├── supabase/
+│   ├── schema.sql                        ← base d'origine (tables, droits RLS, fonctions)
+│   ├── 002_test_profil.sql               ← test de profil + inscription avec code d'entreprise
+│   └── 003_formateur_deblocage_documents.sql ← facultatif (espace Formateur)
+├── server/                 ← API Node.js / Express : création des comptes et des entreprises
+│   └── src/                  (clé service_role, jamais exposée au navigateur)
 └── frontend/               ← React 18 + Vite + Tailwind CSS
     └── src/
-        ├── pages/          ← un dossier par espace : admin/, trainer/, learner/, shared/
-        ├── components/     ← briques d'interface et diagrammes (profil/, ModuleJourney…)
-        ├── data/           ← contenus et règles métier (test de profil, mémos)
-        └── lib/            ← db.js (client API), stores.js, api.js, queries.js, utils.js
+        ├── pages/learner/ProfilPro.jsx   ← le test de profil (seule page de l'espace apprenant)
+        ├── pages/Signup.jsx              ← inscription d'un apprenant
+        ├── components/profil/            ← questionnaire, rapport, graphiques
+        ├── data/profilModel.js           ← questions et calcul du test
+        └── lib/db.js                     ← client Supabase (base, connexion, fichiers)
 ```
 
 **Qui fait quoi ?**
-- **MySQL** : toutes les données (comptes, cours, progression, notes, profils professionnels, déblocage des modules).
-- **API Node.js** : authentification (JWT + mots de passe bcrypt), **contrôle d'accès** sur chaque lecture/écriture, fonctions métier (correction des quiz, temps passé, statistiques), envoi de fichiers.
-- **Frontend React** : ne parle qu'à l'API (`/api`). Le client `lib/db.js` garde une écriture simple : `db.from('courses').select('*, modules(*)').eq('id', x)`.
+- **Supabase** : base de données, connexion des utilisateurs, fichiers, et droits d'accès (RLS).
+- **API Node.js** : création des comptes par le formateur ou l'admin, import CSV, gestion des entreprises.
+- **Frontend React** : lit et écrit directement dans Supabase, dans la limite des droits RLS.
 
-**Les trois espaces**
-| Espace | Voit et gère |
-|---|---|
-| Administrateur MCE | tout : entreprises, formateurs, apprenants, profils, activité |
-| Formateur | son entreprise : cours, modules, apprenants, corrections, profils |
-| Apprenant | ses formations, sa progression, ses notes, son profil professionnel, ses ressources |
-
-### Modèle de données
-
-```
-companies ─┬─ profiles (admin | trainer | learner, mot de passe chiffré)
-           ├─ courses ─ modules ─┬─ lessons ─ quiz_questions ─ quiz_answers (cachées aux apprenants)
-           │                     └─ module_settings (déblocage : ouvert, fermé, date, progressif)
-           └─ announcements
-profiles ─┬─ enrollments · lesson_progress · quiz_attempts · exercise_submissions · user_sessions
-          └─ profile_assessments (test de profil professionnel : passations, observations)
-```
+**Espace apprenant** : uniquement le **test de profil professionnel**. L'apprenant s'inscrit avec le code de son entreprise, se connecte et passe son test. Son formateur et l'admin voient son rapport. Les formations, modules et exercices sont développés dans l'espace Formateur.
 
 ---
 
-## 3. Installation (Windows / XAMPP ou MySQL 8)
+## 3. Installation
 
 ### Prérequis
 - **Node.js 18+**
-- **MySQL 8** ou **MariaDB 10.4+** (celui de XAMPP convient)
+- Un projet **Supabase**
 
-### Étape 1 : configurer l'API
+### Étape 1 : la base Supabase
+Dans Supabase > **SQL Editor**, exécuter dans l'ordre :
+1. `supabase/schema.sql` (si la base est neuve)
+2. `supabase/002_test_profil.sql` (test de profil et inscription)
+3. `supabase/003_formateur_deblocage_documents.sql` (facultatif, pour l'espace Formateur)
+
+### Étape 2 : l'API
 ```bash
 cd server
-cp .env.example .env      # renseignez DB_USER / DB_PASSWORD, JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD
+cp .env.example .env      # SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (Project Settings > API), ADMIN_*
 npm install
-npm run setup             # crée la base « mce_academy » + l'administrateur (+ démo si SEED_DEMO=true)
+npm run seed              # crée l'administrateur (+ démo si SEED_DEMO=true)
 npm run dev               # API sur http://localhost:4000
 ```
-`npm run db:init` crée uniquement la base ; vous pouvez aussi importer `database/schema.sql` dans phpMyAdmin.
 
-### Étape 2 : lancer le frontend
+### Étape 3 : le frontend
 ```bash
 cd frontend
+cp .env.example .env      # VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY (clé publique)
 npm install
-npm run dev               # http://localhost:5173 (l'API est jointe via le proxy Vite)
+npm run dev               # http://localhost:5173
 ```
-
-### Comptes de démonstration (si `SEED_DEMO=true`)
-| Rôle | Email | Mot de passe |
-|---|---|---|
-| Administrateur | celui de `ADMIN_EMAIL` | celui de `ADMIN_PASSWORD` |
-| Formateur | `formateur@vigilus.demo` | `Formateur!2026` |
-| Apprenants | `apprenant1@vigilus.demo`, `apprenant2@…`, `apprenant3@…` | `Apprenant!2026` |
-
-> ⚠️ En production, supprimez les comptes de démo ou changez leurs mots de passe.
 
 ---
 
-## 4. Utilisation au quotidien
+## 4. Faire passer le test aux apprenants
 
-1. **Admin** → *Entreprises clientes* → **Nouvelle entreprise** (avec son formateur référent) → les identifiants s'affichent.
-2. **Formateur** → *Cours & modules* → crée cours, modules et leçons, puis **publie**. → *Programme & déblocage* → ouvre les modules **jour après jour** (fermé / ouvert / à une date) et suit chaque apprenant module par module. Un module fermé est masqué côté serveur : ni leçons, ni quiz, ni téléchargements.
-   → *Documents* : met à disposition les supports (diaporama, livret des mémos) et dépose les e-books ou attestations individuels.
-3. **Formateur** → *Suivi des apprenants* → **Ajouter** ou **Importer CSV** → transmet les identifiants.
-4. **Apprenant** passe son **profil professionnel**, suit ses cours, ses quiz et rend ses exercices.
-5. **Formateur / Admin** suivent la progression, corrigent, consultent les profils et exportent en CSV.
+1. Le formateur (ou l'admin) ouvre **Profils professionnels** : le code et le **lien d'inscription** de l'entreprise sont en haut de la page.
+2. Il envoie ce lien aux apprenants. Chacun crée son compte (`/inscription`), se connecte et arrive directement sur son test.
+3. Le formateur suit qui a terminé, lit chaque rapport, ajoute ses observations et peut ouvrir une nouvelle passation.
 
-**Contenu de la formation VIGILUS IMPACT** : `server/scripts/content/vigilus-impact.js` (leçons) + les JSON du kit MCE (quiz et missions) dans le même dossier. Les PDF participants sont dans `frontend/public/documents/`. Pour réimporter le contenu après modification : `cd server && npm run seed:content` (les comptes, profils et documents sont conservés ; la progression sur les cours est remise à zéro).
-
-**Espace apprenant** : guide complet de reprise dans [docs/ESPACE_APPRENANT.md](docs/ESPACE_APPRENANT.md) (mode « test uniquement », déblocage, suivi, passage à Supabase). Migration Supabase prête : `supabase/schema.sql` puis `supabase/002_espace_apprenant.sql`.
-
-Mot de passe oublié : le formateur (ou l'admin) génère un nouveau mot de passe temporaire depuis la fiche de l'utilisateur.
+Autre possibilité : créer les comptes depuis *Suivi des apprenants* (ajout ou import CSV), avec mot de passe temporaire.
 
 ---
 
@@ -137,17 +105,16 @@ Mot de passe oublié : le formateur (ou l'admin) génère un nouveau mot de pass
 cd frontend && npm run build      # génère frontend/dist
 cd ../server && npm start         # sert l'API ET le site sur le même port
 ```
-Mettez `CORS_ORIGIN` sur votre domaine, laissez `VITE_API_URL` vide, utilisez un `JWT_SECRET` long et unique, et sauvegardez régulièrement la base (`mysqldump mce_academy`) ainsi que `server/uploads/`.
+Mettre `CORS_ORIGIN` sur votre domaine, et dans Supabase > Authentication > URL Configuration, ajouter l'adresse du site (liens de confirmation et de mot de passe oublié).
 
 ---
 
 ## 6. Sécurité
 
-- Les mots de passe sont chiffrés (**bcrypt**) ; les sessions sont des jetons **JWT** signés (durée : `JWT_TTL`).
-- **Chaque requête est filtrée côté serveur** (`server/src/policies.js`) : un apprenant ne lit que ses données, un formateur que son entreprise.
-- Un utilisateur ne peut pas changer son propre rôle ni son entreprise ; un apprenant ne peut ni voir les bonnes réponses des quiz, ni se noter lui-même.
-- Une entreprise suspendue bloque l'accès aux cours de ses apprenants ; un compte désactivé ne peut plus se connecter.
-- Les identifiants MySQL et `JWT_SECRET` restent dans `server/.env` (jamais dans Git ni dans le frontend).
+- Les droits sont appliqués **par Supabase (RLS)** : un apprenant ne voit que son propre test, un formateur ceux de son entreprise, l'admin tout.
+- À l'inscription, le rôle est **toujours « apprenant »** et l'entreprise est déterminée par le code, vérifié dans la base.
+- Un apprenant ne peut ni écrire l'observation du formateur, ni se rouvrir lui-même une passation.
+- La clé `service_role` reste dans `server/.env` (jamais dans Git ni dans le frontend). La clé du frontend est la clé publique.
 
 ---
 

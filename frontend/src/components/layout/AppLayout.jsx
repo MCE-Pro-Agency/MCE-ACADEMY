@@ -9,7 +9,6 @@ import { db } from '../../lib/db';
 import { cn, ROLE_LABELS } from '../../lib/utils';
 import { Avatar } from '../ui';
 import Logo from './Logo';
-import { isTestOnly } from '../../lib/learnerSpace';
 
 /* Menus par espace, regroupés en rubriques explicites */
 const NAV = {
@@ -48,11 +47,6 @@ const NAV = {
   ],
 };
 
-/* Espace apprenant en mode « test uniquement » : seul le test est proposé */
-const LEARNER_TEST_NAV = [
-  { title: 'Mon espace', items: [{ to: '/app/mon-profil', label: 'Mon test de profil', icon: Brain }] },
-];
-
 const AREA_TITLES = { learner: 'Espace apprenant', trainer: 'Espace formateur', admin: 'Administration MCE' };
 
 export default function AppLayout({ area }) {
@@ -68,7 +62,7 @@ export default function AppLayout({ area }) {
     if (isAdmin) db.from('companies').select('id, name').order('name').then(({ data }) => setCompanies(data || []));
   }, [isAdmin]);
 
-  const items = area === 'learner' && profile?.role === 'learner' && isTestOnly(company) ? LEARNER_TEST_NAV : NAV[area] || [];
+  const items = NAV[area] || [];
   const activeCompanyName = isAdmin ? companies.find((c) => c.id === activeCompanyId)?.name : company?.name;
 
   const handleLogout = async () => {

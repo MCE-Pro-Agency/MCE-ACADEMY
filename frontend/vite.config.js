@@ -20,8 +20,6 @@ export default defineConfig({
     proxy: {
       // en dev, /api est redirigé vers le serveur Node.js
       '/api': 'http://localhost:4000',
-      // fichiers envoyés (couvertures, documents, rendus)
-      '/uploads': 'http://localhost:4000',
     },
   },
 });

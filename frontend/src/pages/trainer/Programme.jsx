@@ -10,7 +10,6 @@ import { db } from '../../lib/db';
 import { fetchCourseTree } from '../../lib/queries';
 import { Avatar, EmptyState, PageLoader } from '../../components/ui';
 import { moduleStore, profilStore, lastRun, profilDone, useLocalStoreVersion } from '../../lib/stores';
-import LearnerSpaceSwitch from '../../components/LearnerSpaceSwitch';
 import { moduleMeta } from '../../data/programme';
 import { profilType } from '../../data/profilModel';
 import { cn, formatDate } from '../../lib/utils';
@@ -79,8 +78,6 @@ export default function Programme({ base = '/formateur' }) {
           </select>
         )}
       </div>
-
-      <LearnerSpaceSwitch companyId={activeCompanyId} stats={`${learners.filter((l) => profilDone(profilStore.get(l.user_id))).length}/${learners.length} apprenant(s) ont terminé leur test`} />
 
       {nextClosed && (
         <div className="flex flex-col gap-3 rounded-3xl bg-gradient-to-r from-navy-900 to-navy-700 p-6 text-white sm:flex-row sm:items-center">
