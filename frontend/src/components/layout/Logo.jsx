@@ -12,7 +12,7 @@ export default function Logo({ to = '/', dark = false, compact = false, classNam
           <span className={cn('block font-display text-lg font-extrabold tracking-tight', dark ? 'text-white' : 'text-navy-900')}>
             MCE <span className="text-brand-500">Academy</span>
           </span>
-          <span className={cn('block text-[10px] font-semibold uppercase tracking-[0.18em]', dark ? 'text-navy-200' : 'text-slate-400')}>
+          <span className={cn('block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.18em]', dark ? 'text-navy-200' : 'text-slate-400')}>
             Ensemble vers la réussite
           </span>
         </span>

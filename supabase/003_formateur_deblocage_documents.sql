@@ -1,20 +1,46 @@
 -- =====================================================================
---  MCE ACADEMY — Migration Supabase n° 3 (FACULTATIVE) : déblocage des modules et documents
---  Concerne l'espace Formateur. À exécuter APRÈS schema.sql et 002_test_profil.sql,
---  uniquement si l'équipe Formateur garde ces fonctions :
---    - module_settings : déblocage des modules (fermé / ouvert / date / progressif)
---    - documents       : supports communs et documents personnels des apprenants
---    - verrouillage    : contenu d'un module fermé invisible pour les apprenants
---    - RPC module_progress : progression module par module
---  Écrit à partir des règles testées sur MySQL ; pas encore exécuté sur Supabase.
+--  MCE ACADEMY — Migration Supabase n° 3 : onglets de l'espace Apprenant,
+--  déblocage des modules et documents.
+--  À exécuter APRÈS schema.sql, 002_test_profil.sql et 002b_droits_api.sql,
+--  dans Supabase > SQL Editor. Ré-exécutable sans risque.
+--
+--  Deux niveaux de contrôle, tous deux appliqués PAR LA BASE (pas seulement à l'écran) :
+--    1. Onglet entier (companies.learner_tabs) : le formateur ouvre ou ferme
+--       Parcours, Cours, Quiz, Exercices, Documents, Annonces pour son entreprise.
+--       Par défaut, tout est FERMÉ (seul le test de profil reste ouvert).
+--    2. Module par module (module_settings) : fermé par défaut, ouvert à la main
+--       ou à une date par le formateur.
+--  Le formateur et l'admin voient toujours tout.
+--  Ne touche pas aux fonctions vigilus_* / mce_admin_* des autres applications.
 -- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- 1. Onglets de l'espace Apprenant (par entreprise)
+--    learner_tabs = {"parcours": true, "cours": false, ...} ; clé absente = fermé
+-- ---------------------------------------------------------------------
+alter table public.companies add column if not exists learner_tabs jsonb not null default '{}'::jsonb;
+
+-- Vrai si l'onglet est ouvert pour l'utilisateur connecté (toujours vrai hors apprenant)
+create or replace function public.learner_tab_open(p_tab text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select case
+    when public.auth_role() is distinct from 'learner' then true
+    else coalesce((select (c.learner_tabs ->> p_tab)::boolean from public.companies c where c.id = public.auth_company()), false)
+  end
+$$;
+
+-- Onglet dont dépend une leçon, selon son type
+create or replace function public.lesson_tab(p_type public.lesson_type)
+returns text language sql immutable as $$
+  select case p_type::text when 'quiz' then 'quiz' when 'exercise' then 'exercices' when 'document' then 'documents' else 'cours' end
+$$;
 
 -- ---------------------------------------------------------------------
 -- 2. Tables
 -- ---------------------------------------------------------------------
 create table if not exists public.module_settings (
   module_id         uuid primary key references public.modules(id) on delete cascade,
-  mode              text not null default 'open' check (mode in ('open', 'closed', 'date', 'sequential')),
+  mode              text not null default 'closed' check (mode in ('open', 'closed', 'date', 'sequential')),
   opens_at          date,
   requires_profile  boolean not null default false,
   updated_at        timestamptz not null default now()
@@ -38,23 +64,32 @@ create index if not exists documents_user_idx on public.documents(user_id);
 drop trigger if exists module_settings_touch on public.module_settings;
 create trigger module_settings_touch before update on public.module_settings
   for each row execute function public.touch_updated_at();
+
 -- ---------------------------------------------------------------------
 -- 3. Fonctions d'aide
 -- ---------------------------------------------------------------------
 
--- Module fermé par le formateur (ou date d'ouverture non atteinte)
+-- Module fermé : aucun réglage (fermé par défaut), fermé, ou date d'ouverture non atteinte
 create or replace function public.module_locked(p_module uuid)
 returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
+  select not exists (
     select 1 from public.module_settings s
     where s.module_id = p_module
-      and (s.mode = 'closed' or (s.mode = 'date' and s.opens_at is not null and s.opens_at > current_date))
+      and (s.mode in ('open', 'sequential') or (s.mode = 'date' and s.opens_at is not null and s.opens_at <= current_date))
   )
 $$;
 
 create or replace function public.lesson_locked(p_lesson uuid)
 returns boolean language sql stable security definer set search_path = public as $$
-  select coalesce((select public.module_locked(module_id) from public.lessons where id = p_lesson), false)
+  select coalesce((select public.module_locked(module_id) from public.lessons where id = p_lesson), true)
+$$;
+
+-- Leçon accessible à l'apprenant connecté : module ouvert ET onglet correspondant ouvert
+create or replace function public.lesson_open_for_me(p_lesson uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.auth_role() is distinct from 'learner'
+      or coalesce((select not public.module_locked(l.module_id) and public.learner_tab_open(public.lesson_tab(l.type))
+                   from public.lessons l where l.id = p_lesson), false)
 $$;
 
 create or replace function public.module_course(p_module uuid)
@@ -63,28 +98,29 @@ returns uuid language sql stable security definer set search_path = public as $$
 $$;
 
 -- ---------------------------------------------------------------------
--- 4. Verrouillage des modules fermés (lecture et envois)
+-- 4. Verrouillage côté apprenant (lecture et envois)
 -- ---------------------------------------------------------------------
 drop policy if exists lessons_select on public.lessons;
 create policy lessons_select on public.lessons for select
   using (
     public.can_view_course(course_id)
-    and (public.auth_role() <> 'learner' or not public.module_locked(module_id))
+    and (public.auth_role() <> 'learner'
+         or (not public.module_locked(module_id) and public.learner_tab_open(public.lesson_tab(type))))
   );
 
 drop policy if exists quiz_questions_select on public.quiz_questions;
 create policy quiz_questions_select on public.quiz_questions for select
   using (
     public.can_view_course(public.lesson_course(lesson_id))
-    and (public.auth_role() <> 'learner' or not public.lesson_locked(lesson_id))
+    and public.lesson_open_for_me(lesson_id)
   );
 
 -- submit_quiz (security definer) et les rendus d'exercices passent par ce garde-fou
 create or replace function public.guard_locked_lesson()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  if public.auth_role() = 'learner' and public.lesson_locked(new.lesson_id) then
-    raise exception 'Ce module n''est pas encore ouvert par votre formateur.';
+  if public.auth_role() = 'learner' and not public.lesson_open_for_me(new.lesson_id) then
+    raise exception 'Ce contenu n''est pas encore ouvert par votre formateur.';
   end if;
   return new;
 end $$;
@@ -95,6 +131,11 @@ create trigger quiz_attempts_lock before insert on public.quiz_attempts
 drop trigger if exists submissions_lock on public.exercise_submissions;
 create trigger submissions_lock before insert or update on public.exercise_submissions
   for each row execute function public.guard_locked_lesson();
+
+-- Annonces : visibles par l'apprenant seulement si l'onglet est ouvert
+drop policy if exists announcements_select on public.announcements;
+create policy announcements_select on public.announcements for select
+  using (public.is_admin() or (company_id = public.auth_company() and public.learner_tab_open('annonces')));
 
 -- ---------------------------------------------------------------------
 -- 5. RLS des nouvelles tables
@@ -111,8 +152,8 @@ create policy module_settings_write on public.module_settings for all
   using (public.can_manage_company(public.course_company(public.module_course(module_id))))
   with check (public.can_manage_company(public.course_company(public.module_course(module_id))));
 
--- DOCUMENTS : apprenant → documents disponibles de son entreprise (communs ou à son nom) ;
---             formateur / admin → gestion
+-- DOCUMENTS : apprenant → onglet ouvert + documents disponibles de son entreprise
+--             (communs ou à son nom) ; formateur / admin → gestion
 drop policy if exists documents_select on public.documents;
 create policy documents_select on public.documents for select
   using (
@@ -121,6 +162,7 @@ create policy documents_select on public.documents for select
       company_id = public.auth_company()
       and is_available
       and (user_id is null or user_id = auth.uid())
+      and public.learner_tab_open('documents')
     )
   );
 drop policy if exists documents_write on public.documents;
@@ -164,11 +206,19 @@ begin
   where e.course_id = p_course and (v_user is null or e.user_id = v_user)
   order by m.position;
 end $$;
-grant execute on function public.module_progress(uuid, uuid) to authenticated;
 
 -- ---------------------------------------------------------------------
--- 7. Stockage des fichiers
---    Créer dans Supabase > Storage un bucket PRIVÉ « documents » (e-books, attestations)
---    et servir les fichiers par URL signée (createSignedUrl) plutôt que par lien public.
---    Les PDF communs (support, livret) peuvent rester dans frontend/public/documents/.
+-- 7. Droits de l'API (sur ce projet, rien n'est accordé par défaut : cf. 002b)
+-- ---------------------------------------------------------------------
+grant select, insert, update, delete on public.module_settings, public.documents to authenticated;
+grant all on public.module_settings, public.documents to service_role;
+grant execute on function public.learner_tab_open(text), public.lesson_tab(public.lesson_type),
+  public.module_locked(uuid), public.lesson_locked(uuid), public.lesson_open_for_me(uuid),
+  public.module_course(uuid), public.module_progress(uuid, uuid) to authenticated, service_role;
+
+-- ---------------------------------------------------------------------
+-- 8. Stockage des fichiers
+--    Les documents téléchargeables vont dans le bucket « media » (déjà utilisé),
+--    ou dans un bucket PRIVÉ « documents » servi par URL signée (createSignedUrl)
+--    pour les fichiers personnels (attestations).
 -- ---------------------------------------------------------------------

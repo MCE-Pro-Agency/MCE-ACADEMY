@@ -7,6 +7,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { isSupabaseConfigured } from './lib/db';
 import ConfigMissing from './pages/ConfigMissing';
 import './index.css';
+import './public.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

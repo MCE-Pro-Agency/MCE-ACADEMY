@@ -72,3 +72,18 @@
 .mce-pulse-ring { animation: mce-pulse-ring 1.8s ease-out infinite; transform-origin: center; }
 .mce-dash { animation: mce-dash 1.2s linear infinite; }
 .mce-float { animation: mce-float 4s ease-in-out infinite; }
+
+/* ---- Effets « waouh » de l'en-tête du rapport ---- */
+@keyframes mce-spin-slow { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes mce-aurora { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(40px, -30px) scale(1.15); } 100% { transform: translate(-30px, 20px) scale(0.95); } }
+@keyframes mce-border { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
+@keyframes mce-shine { 0% { transform: translateX(-120%) skewX(-20deg); } 60%, 100% { transform: translateX(260%) skewX(-20deg); } }
+@keyframes mce-twinkle { 0%, 100% { opacity: .15; transform: scale(.8); } 50% { opacity: .9; transform: scale(1.2); } }
+.mce-spin-slow { animation: mce-spin-slow 14s linear infinite; }
+.mce-aurora { animation: mce-aurora 12s ease-in-out infinite alternate; }
+.mce-border { background-size: 300% 300%; animation: mce-border 8s linear infinite; }
+.mce-shine::after { content: ''; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent); animation: mce-shine 4.5s ease-in-out infinite; pointer-events: none; }
+.mce-twinkle { animation: mce-twinkle 3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .mce-spin-slow, .mce-aurora, .mce-border, .mce-twinkle, .mce-shine::after, .mce-pulse-ring, .mce-float { animation: none; }
+}

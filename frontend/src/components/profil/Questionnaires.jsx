@@ -54,7 +54,6 @@ export function ProfilQuestionnaire({ userId, onDone, onCancel }) {
     return draft.timerStart ? draft : { ...draft, timerStart: new Date().toISOString() };
   });
   const [now, setNow] = useState(Date.now());
-  const sent = useRef(false);
   useEffect(() => {
     if (!stored.draft?.timerStart) profilStore.saveDraft(userId, d);
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -81,11 +80,16 @@ export function ProfilQuestionnaire({ userId, onDone, onCancel }) {
   const pct = Math.round((d.pos / PROFIL_STEPS.length) * 100);
   const meta = st.type === 'module' ? { title: st.dim.title, sub: st.dim.definition, color: DIM_COLORS[st.dim.id] } : STEP_META[st.type];
 
-  const update = (next) => {
-    setD(next);
-    profilStore.saveDraft(userId, next);
-  };
-  const setAns = (id, v) => update({ ...d, answers: { ...d.answers, [id]: v } });
+  // Mise à jour fonctionnelle : deux réponses rapides ne s'écrasent jamais.
+  // L'enregistrement du brouillon se fait après l'affichage (effet), jamais pendant.
+  const sent = useRef(false);
+  const update = (fn) => setD((prev) => (typeof fn === 'function' ? fn(prev) : fn));
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    if (!sent.current) profilStore.saveDraft(userId, d);
+  }, [d]); // eslint-disable-line react-hooks/exhaustive-deps
+  const setAns = (id, v) => update((prev) => ({ ...prev, answers: { ...prev.answers, [id]: v } }));
   const top = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
   const move = (dir) => {
@@ -106,9 +110,9 @@ export function ProfilQuestionnaire({ userId, onDone, onCancel }) {
   return (
     <div className="card overflow-hidden">
       <div className="relative overflow-hidden p-6 text-white transition-colors duration-500" style={{ background: `linear-gradient(135deg, ${meta.color}, #0B1D33)` }}>
-        <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/80">
-          <span>Étape {d.pos + 1} sur {PROFIL_STEPS.length}</span>
-          <span>{pct} % · enregistré automatiquement</span>
+        <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-widest text-white/80">
+          <span className="whitespace-nowrap">Étape {d.pos + 1} sur {PROFIL_STEPS.length}</span>
+          <span className="whitespace-nowrap">{pct} %<span className="hidden sm:inline"> · enregistré automatiquement</span></span>
         </div>
         <div className={cn('mt-3 flex flex-wrap items-center gap-3 rounded-2xl px-4 py-2 ring-1', inGrace ? 'animate-pulse bg-red-500/90 ring-red-300' : left < 60000 ? 'bg-red-500/80 ring-red-300' : left < 5 * 60000 ? 'bg-amber-500/80 ring-amber-200' : 'bg-white/10 ring-white/20')}>
           <Timer className="h-5 w-5" />
@@ -217,10 +221,12 @@ export function ProfilQuestionnaire({ userId, onDone, onCancel }) {
           </>
         )}
 
-        <div className="flex items-center justify-between gap-2 pt-2">
-          <button onClick={() => move(-1)} className="btn-secondary"><ArrowLeft className="h-4 w-4" /> {d.pos === 0 ? 'Plus tard (le chrono continue)' : 'Précédent'}</button>
-          <button onClick={() => move(1)} className="btn-brand px-6">
-            {d.pos === PROFIL_STEPS.length - 1 ? <><Sparkles className="h-4 w-4" /> Découvrir mon profil</> : <>Continuer <ArrowRight className="h-4 w-4" /></>}
+        <div className="flex items-stretch justify-between gap-3 pt-2">
+          <button onClick={() => move(-1)} className="btn-secondary flex-1 whitespace-nowrap sm:flex-none" title={d.pos === 0 ? 'Le chrono continue pendant la pause' : undefined}>
+            <ArrowLeft className="h-4 w-4" /> {d.pos === 0 ? 'Plus tard' : 'Précédent'}
+          </button>
+          <button onClick={() => move(1)} className="btn-brand flex-1 whitespace-nowrap px-6 sm:flex-none">
+            {d.pos === PROFIL_STEPS.length - 1 ? <><Sparkles className="h-4 w-4" /> <span className="sm:hidden">Terminer</span><span className="hidden sm:inline">Découvrir mon profil</span></> : <>Continuer <ArrowRight className="h-4 w-4" /></>}
           </button>
         </div>
       </div>

@@ -33,7 +33,15 @@ export default {
           900: '#0B1D33',
           950: '#06111F',
         },
-        // Doré — à utiliser avec parcimonie (badges, certificats, distinctions)
+        // Accent bleu des pages publiques MCE.
+        accent: {
+          100: '#EBF7FD',
+          300: '#7BC8F0',
+          400: '#2B9FDC',
+          500: '#1C82BD',
+          600: '#186898',
+        },
+        // Doré — badges, certificats et distinctions dans les espaces de formation.
         gold: {
           100: '#FBF3D6',
           300: '#EBD27E',

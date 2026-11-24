@@ -30,7 +30,7 @@ export default function Users({ fixedRole = '' }) {
 
   const load = async () => {
     const [{ data: u }, { data: c }] = await Promise.all([
-      db.from('profiles').select('*, company:companies(name)').order('created_at', { ascending: false }),
+      db.from('profiles').select('*, company:companies!profiles_company_id_fkey(name)').order('created_at', { ascending: false }),
       db.from('companies').select('id, name').order('name'),
     ]);
     setUsers(u || []);

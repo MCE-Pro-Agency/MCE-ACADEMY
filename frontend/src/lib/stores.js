@@ -95,7 +95,7 @@ export const MODULE_MODES = {
 export const moduleStore = {
   get(moduleId) {
     const r = cache.modules[moduleId];
-    return { mode: r?.mode || 'open', opensAt: r?.opens_at ? String(r.opens_at).slice(0, 10) : '', requiresProfile: !!r?.requires_profile };
+    return { mode: r?.mode || 'closed', opensAt: r?.opens_at ? String(r.opens_at).slice(0, 10) : '', requiresProfile: !!r?.requires_profile };
   },
   async set(moduleId, patch) {
     const next = { ...this.get(moduleId), ...patch };

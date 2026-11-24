@@ -300,7 +300,7 @@ export const ARCH = {
   cooperation: { nom: 'Le Facilitateur', emoji: '🧩', court: 'transforme les désaccords en solutions', apport: 'Vous cherchez les intérêts communs, partagez l’information et reconnaissez votre part dans les situations collectives.', vigilance: 'Ne laissez pas la recherche d’accord retarder une discussion difficile mais nécessaire.', env: 'les projets transversaux et les interfaces entre services.' },
   initiative: { nom: 'Le Bâtisseur', emoji: '🛠️', court: 'agit et propose des solutions', apport: 'Vous proposez des pistes, prenez des initiatives utiles et signalez vite les blocages.', vigilance: 'Vérifiez que vos initiatives restent dans votre périmètre et alignées avec les priorités de l’équipe.', env: 'la résolution de problèmes, l’amélioration des processus et le lancement d’actions.' },
   parole: { nom: 'L’Orateur', emoji: '🎤', court: 'porte les messages et donne envie d’agir', apport: 'Vous structurez vos idées, captez l’attention et savez représenter l’équipe avec clarté.', vigilance: 'Laissez aussi la place à l’écoute : un bon message répond d’abord aux questions du public.', env: 'les présentations, la représentation de l’équipe, la formation et l’animation.' },
-  presence: { nom: 'Le Pilier', emoji: '🌿', court: 'inspire confiance par sa fiabilité et son équilibre', apport: 'Vous incarnez une image professionnelle soignée et gérez votre énergie pour rester constant(e) dans la durée.', vigilance: 'Votre exigence envers vous-même ne doit pas devenir un jugement envers les autres.', env: 'les fonctions en contact client, l’accueil et les rôles très exposés.' },
+  presence: { nom: 'Le Pilier', emoji: '🌿', court: 'inspire confiance par sa fiabilité et son équilibre', apport: 'Vous incarnez une image professionnelle soignée et gérez votre énergie pour garder un niveau constant dans la durée.', vigilance: 'Votre exigence envers vous-même ne doit pas devenir un jugement envers les autres.', env: 'les fonctions en contact client, l’accueil et les rôles très exposés.' },
   client: { nom: 'Le Négociateur', emoji: '🎯', court: 'relie besoins clients, valeur et engagements', apport: 'Vous cherchez la priorité réelle du client, argumentez sur la valeur et préférez une promesse tenable.', vigilance: 'Gardez l’écoute sous pression commerciale : une objection est une information, pas une fin de discussion.', env: 'la relation commerciale, la négociation et le développement de partenariats.' },
   progression: { nom: 'L’Explorateur', emoji: '🔭', court: 'apprend et progresse par l’action', apport: 'Vous transformez les retours en actions, testez de nouvelles pratiques et cherchez à apprendre.', vigilance: 'Choisissez un ou deux axes à la fois pour que vos apprentissages deviennent des habitudes.', env: 'les missions nouvelles, les projets pilotes et les rôles qui évoluent.' },
 };
@@ -314,8 +314,8 @@ const AXIS_TXT = {
   autonomie: ['a besoin d’autonomie et de marge de décision', 'alterne travail autonome et travail en équipe', 'tire son énergie du collectif et de la co-construction'],
   cadre: ['avance mieux avec des repères clairs et un cadre organisé', 'combine besoin de cadre et goût de l’essai', 'aime explorer, tester et sortir des sentiers battus'],
   rythme: ['prend le temps d’analyser avant de s’engager', 'équilibre réflexion et passage à l’action', 'privilégie l’action rapide et l’ajustement en marche'],
-  reconnaissance: ['est nourri(e) par l’apprentissage et les retours réguliers', 'apprécie autant les retours que les résultats', 'est motivé(e) par des objectifs concrets et des résultats visibles'],
-  contribution: ['aime transmettre, accompagner et faire grandir', 'sait à la fois accompagner et résoudre', 'aime résoudre par soi-même les problèmes complexes'],
+  reconnaissance: ['se nourrit d’apprentissage et de retours réguliers', 'apprécie autant les retours que les résultats', 'avance grâce à des objectifs concrets et des résultats visibles'],
+  contribution: ['aime transmettre, accompagner et faire grandir', 'sait à la fois accompagner et résoudre', 'aime résoudre en autonomie les problèmes complexes'],
 };
 const AXIS_TIPS = {
   autonomie: ['Donner un objectif clair, puis laisser de la marge sur la méthode.', null, 'L’associer aux décisions et aux temps d’équipe.'],
@@ -328,39 +328,68 @@ const axisPos = (v) => (v <= -50 ? 0 : v >= 50 ? 2 : 1);
 export const axisText = (id, v) => AXIS_TXT[id][axisPos(v)];
 const du = (nom) => nom.replace(/^Le /, 'du ').replace(/^L’/, 'de l’');
 
-/** Portrait rédigé (neutre, sans pronom genré) */
-export function portrait(run, name = 'La personne') {
+/* Formulations du portrait : compétences avec leur article, axes en phrases courtes */
+const DIM_NOUN = {
+  communication: 'la communication', leadership: 'le leadership', priorites: 'l’organisation', adaptation: 'l’adaptabilité',
+  cooperation: 'la coopération', initiative: 'l’initiative', client: 'l’orientation client', parole: 'la prise de parole',
+  presence: 'la présence professionnelle', progression: 'l’apprentissage',
+};
+const PORTRAIT_AX = {
+  autonomie: ['a besoin d’autonomie dans son travail', 'alterne volontiers travail seul et travail en équipe', 'tire son énergie du collectif'],
+  cadre: ['avance mieux avec un cadre clair', 'combine besoin de repères et goût de l’essai', 'aime explorer et sortir des sentiers battus'],
+  rythme: ['prend le temps d’analyser avant d’agir', 'équilibre réflexion et action', 'privilégie l’action rapide'],
+  reconnaissance: ['de l’apprentissage et des retours réguliers', 'autant des retours reçus que des résultats obtenus', 'd’objectifs concrets et de résultats visibles'],
+  contribution: ['transmettre et faire grandir les autres', 'accompagner les autres autant que de résoudre des problèmes', 'résoudre en autonomie des problèmes complexes'],
+};
+const de = (x) => (/^[aeiouyéèêâîôh]/i.test(x) ? `d’${x}` : `de ${x}`);
+const list = (a) => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} et ${a[a.length - 1]}`);
+const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+
+/** Portrait rédigé en trois paragraphes (neutre, sans pronom genré) */
+export function portraitParts(run, name = 'La personne') {
   const r = run.result;
   const t = profilType(run);
   const first = name.split(' ')[0] || name;
-  const s = r.strengths.map((id) => DIM[id].short.toLowerCase());
-  const p = r.priorities.map((id) => DIM[id].short.toLowerCase());
   const ctx = r.context || {};
-  const parts = [];
-  if (ctx.CTX_TEAM !== undefined) {
-    const sen = CONTEXT[1].options[ctx.CTX_SENIORITY];
-    let c = `${first} occupe son poste depuis ${sen ? sen.toLowerCase() : 'un certain temps'}`;
-    if (ctx.CTX_TEAM === 1 || ctx.CTX_TEAM === 2) c += ` et encadre une équipe (${CONTEXT[0].options[ctx.CTX_TEAM].replace('Oui, ', '')})`;
-    if (ctx.CTX_TEAM === 3) c += ', avec une prise de responsabilités managériales en vue';
-    if (ctx.CTX_CONTACT === 2) c += ', au contact quotidien des clients ou du public';
-    parts.push(`${c}.`);
+  const out = [];
+
+  // 1. Situation et style
+  let p1 = '';
+  if (ctx.CTX_SENIORITY !== undefined) {
+    p1 = `${first} occupe son poste depuis ${CONTEXT[1].options[ctx.CTX_SENIORITY].toLowerCase()}`;
+    if (ctx.CTX_TEAM === 1 || ctx.CTX_TEAM === 2) p1 += ` et encadre une équipe de ${CONTEXT[0].options[ctx.CTX_TEAM].replace('Oui, ', '')}`;
+    if (ctx.CTX_TEAM === 3) p1 += ` et prendra bientôt des responsabilités managériales`;
+    if (ctx.CTX_CONTACT === 2) p1 += `, au contact quotidien des clients ou du public`;
+    p1 += '. ';
   }
-  parts.push(`Son style dominant est celui ${du(t.main.nom)} : ${t.main.court}, avec une tendance ${du(t.second.nom)} (${t.second.court}).`);
-  parts.push(`Ses appuis les plus nets : ${s[0]}, ${s[1]} et ${s[2]}.`);
+  p1 += `Son style dominant est celui ${du(t.main.nom)} : une personne qui ${t.main.court}. `;
+  p1 += `On y retrouve aussi une touche ${du(t.second.nom)}, qui ${t.second.court}. `;
+  p1 += `Ses appuis les plus nets sont ${list(r.strengths.map((id) => DIM_NOUN[id]))}.`;
+  out.push(p1);
+
+  // 2. Manière de fonctionner et motivation
   if (r.axes) {
-    const ax = AXES.map((a) => axisText(a.id, r.axes[a.id]));
-    parts.push(`Au quotidien, ${first} ${ax[0]}, ${ax[1]} et ${ax[2]}. Côté motivation, ${first} ${ax[3]} et ${ax[4]}.`);
+    const ax = (id) => PORTRAIT_AX[id][axisPos(r.axes[id])];
+    out.push(
+      `Au quotidien, ${first} ${ax('autonomie')}, ${ax('cadre')}, et ${ax('rythme')}. ` +
+      `Sa motivation vient ${ax('reconnaissance')} ; ce qui l’anime le plus, c’est ${de(ax('contribution'))}.`
+    );
   }
-  let obj = `Les marges de progression portent d’abord sur ${p[0]} et ${p[1]}.`;
+
+  // 3. Progression et objectif
+  let p3 = `Les marges de progression portent d’abord sur ${list(r.priorities.map((id) => DIM_NOUN[id]))}.`;
   if (r.objective?.dim) {
     const o = DIM[r.objective.dim];
-    if (r.priorities.includes(o.id)) obj += ` C’est cohérent avec l’objectif choisi : « ${o.title} ».`;
-    else if (r.strengths.includes(o.id)) obj += ` L’objectif choisi (« ${o.title} ») porte sur une compétence déjà solide : l’enjeu sera d’aller vers l’excellence et la transmission.`;
-    else obj += ` L’objectif personnel choisi est « ${o.title} » (${dimOf(run, o.id).score}/100).`;
+    if (r.priorities.includes(o.id)) p3 += ` C’est cohérent avec l’objectif choisi, « ${o.title} ».`;
+    else if (r.strengths.includes(o.id)) p3 += ` L’objectif choisi, « ${o.title} », porte sur une compétence déjà solide : l’enjeu sera d’aller vers l’excellence et de transmettre ce savoir-faire.`;
+    else p3 += ` L’objectif personnel choisi est « ${o.title} », avec un score actuel de ${dimOf(run, o.id).score}/100.`;
   }
-  parts.push(obj);
-  return parts.join(' ');
+  out.push(cap(p3));
+  return out;
 }
+
+/** Portrait en un seul texte (PDF) */
+export const portrait = (run, name) => portraitParts(run, name).join('\n\n');
 
 /** Conseils pour bien travailler avec la personne (formateur / manager) */
 export function workWithTips(run) {

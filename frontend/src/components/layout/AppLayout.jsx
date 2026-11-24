@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, Award, UserCircle, Users, GraduationCap, ClipboardCheck,
-  Megaphone, Building2, ShieldCheck, LogOut, Menu, X, Eye, Settings, ChevronDown, Brain, BookMarked, UserCog, CalendarDays, FolderOpen, CalendarClock,
+  Megaphone, Building2, ShieldCheck, LogOut, Menu, X, Eye, Settings, ChevronDown, Brain, BookMarked, UserCog, CalendarDays, FolderOpen, CalendarClock, Lock,
 } from 'lucide-react';
+import { LEARNER_TABS, isTabOpen } from '../../lib/learnerTabs';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/db';
 import { cn, ROLE_LABELS } from '../../lib/utils';
@@ -12,9 +13,10 @@ import Logo from './Logo';
 
 /* Menus par espace, regroupés en rubriques explicites */
 const NAV = {
-  // Espace apprenant : le test de profil uniquement (le reste est porté par l'espace Formateur)
+  // Espace apprenant : le test de profil (toujours ouvert) + les onglets ouverts par le formateur
   learner: [
     { title: 'Mon espace', items: [{ to: '/app/mon-profil', label: 'Mon test de profil', icon: Brain }] },
+    { title: 'Ma formation', items: LEARNER_TABS.map(({ key, to, label, icon }) => ({ key, to, label, icon })) },
   ],
   trainer: [
     { title: 'Pilotage', items: [{ to: '/formateur', label: 'Tableau de bord', icon: LayoutDashboard, end: true }] },
@@ -104,7 +106,9 @@ export default function AppLayout({ area }) {
         {items.map((group) => (
           <div key={group.title} className="pb-2">
             <p className="px-3.5 pb-1.5 pt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-navy-400">{group.title}</p>
-            {group.items.map(({ to, label, icon: Icon, end }) => (
+            {group.items.map(({ key, to, label, icon: Icon, end }) => {
+              const locked = area === 'learner' && key && !isTabOpen(company, key);
+              return (
               <NavLink
                 key={to}
                 to={to}
@@ -117,9 +121,11 @@ export default function AppLayout({ area }) {
                 }
               >
                 <Icon className="h-[18px] w-[18px]" />
-                {label}
+                <span className="flex-1">{label}</span>
+                {locked && <Lock className="h-3.5 w-3.5 text-navy-400" title="Ouvert par votre formateur" />}
               </NavLink>
-            ))}
+              );
+            })}
           </div>
         ))}
 

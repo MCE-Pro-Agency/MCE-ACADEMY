@@ -21,7 +21,7 @@ export function AuthProvider({ children }) {
       clearStores();
       return;
     }
-    const { data } = await db.from('profiles').select('*, company:companies(*)').eq('id', userId).single();
+    const { data } = await db.from('profiles').select('*, company:companies!profiles_company_id_fkey(*)').eq('id', userId).single();
     if (data) {
       const { company: c, ...p } = data;
       setProfile(p);
@@ -70,7 +70,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signIn = async (email, password) => {
-    const { error } = await db.auth.signInWithPassword({ email: email.trim(), password });
+    const attempt = () => db.auth.signInWithPassword({ email: email.trim(), password }).catch((e) => ({ error: e }));
+    const isNetwork = (e) => e && (/failed to fetch|network|load failed|fetch/i.test(e.message || '') || e.name === 'AuthRetryableFetchError');
+    let { error } = await attempt();
+    // Coupure réseau passagère : on réessaie une fois avant d'afficher une erreur
+    if (isNetwork(error)) {
+      await new Promise((r) => setTimeout(r, 1200));
+      ({ error } = await attempt());
+    }
+    if (isNetwork(error)) {
+      throw new Error('Impossible de joindre le serveur. Vérifiez votre connexion internet, rechargez la page (Ctrl + F5) et réessayez.');
+    }
     if (error) {
       if (/invalid/i.test(error.message)) throw new Error('Email ou mot de passe incorrect.');
       if (/banned/i.test(error.message)) throw new Error('Votre compte est désactivé. Contactez votre formateur.');

@@ -10,6 +10,8 @@ import NotFound from './pages/NotFound';
 import Profile from './pages/Profile';
 
 import ProfilPro from './pages/learner/ProfilPro';
+import LearnerTab from './pages/learner/LearnerTab';
+import { LEARNER_TABS } from './lib/learnerTabs';
 import ProfilsSuivi from './pages/shared/ProfilsSuivi';
 
 import TrainerDashboard from './pages/trainer/Dashboard';
@@ -43,6 +45,7 @@ export default function App() {
           <Route path="/app" element={<Navigate to="/app/mon-profil" replace />} />
           <Route path="/app/mon-profil" element={<ProfilPro />} />
           <Route path="/app/profil" element={<Profile />} />
+          {LEARNER_TABS.map((t) => <Route key={t.key} path={t.to} element={<LearnerTab tabKey={t.key} />} />)}
           <Route path="/app/*" element={<Navigate to="/app/mon-profil" replace />} />
         </Route>
       </Route>

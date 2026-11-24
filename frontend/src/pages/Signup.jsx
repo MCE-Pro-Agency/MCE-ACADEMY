@@ -3,10 +3,13 @@
    supabase/002_test_profil.sql) : le code est vérifié côté serveur, jamais côté navigateur. */
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Building2, Lock, Mail, User } from 'lucide-react';
+import { Building2, Lock, Mail, User } from 'lucide-react';
 import { db } from '../lib/db';
 import { Spinner } from '../components/ui';
 import Logo from '../components/layout/Logo';
+
+const NETWORK_MSG = 'Impossible de joindre le serveur. Vérifiez votre connexion internet, rechargez la page (Ctrl + F5) et réessayez.';
+const isNetwork = (e) => e && (/failed to fetch|network|load failed/i.test(e.message || '') || e.name === 'AuthRetryableFetchError');
 
 export default function Signup() {
   const [params] = useSearchParams();
@@ -23,7 +26,11 @@ export default function Signup() {
     if (form.password !== form.confirm) return setError('Les deux mots de passe ne correspondent pas.');
     setLoading(true);
     // Vérifie le code avant de créer le compte (fonction publique, ne révèle que le nom de l'entreprise)
-    const { data: companyName, error: codeErr } = await db.rpc('company_for_join_code', { p_code: form.join_code.trim() });
+    const { data: companyName, error: codeErr } = await db.rpc('company_for_join_code', { p_code: form.join_code.trim() }).catch((e) => ({ error: e }));
+    if (isNetwork(codeErr)) {
+      setLoading(false);
+      return setError(NETWORK_MSG);
+    }
     if (codeErr || !companyName) {
       setLoading(false);
       return setError('Code d’entreprise inconnu. Vérifiez-le auprès de votre formateur.');
@@ -38,6 +45,7 @@ export default function Signup() {
     });
     if (err) {
       setLoading(false);
+      if (isNetwork(err)) return setError(NETWORK_MSG);
       return setError(err.message.includes('registered') ? 'Un compte existe déjà avec cet email : connectez-vous.' : err.message);
     }
     // Le compte est créé : retour à la page de connexion avec un message de confirmation
@@ -47,12 +55,12 @@ export default function Signup() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 px-6 py-8">
+    <div className="public-auth public-auth-signup">
       <Logo />
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
-          <div className="card p-8">
-            <h1 className="text-2xl font-bold text-navy-900">Créer mon compte</h1>
-            <p className="mt-1 text-sm text-slate-500">Inscrivez-vous, puis passez votre <b>test de profil professionnel</b> (20 minutes chronométrées).</p>
+      <div className="public-auth-card">
+          <div>
+            <h1>Créer mon compte.</h1>
+            <p className="public-auth-intro">Inscrivez-vous, puis passez votre <b>test de profil professionnel</b> (20 minutes chronométrées).</p>
             <form onSubmit={submit} className="mt-6 space-y-4">
               <Field icon={Building2} label="Code de votre entreprise" hint="Donné par votre formateur">
                 <input required className="input pl-10 font-mono tracking-widest" placeholder="EX. VIGILUS2026" value={form.join_code} onChange={set('join_code')} />
@@ -72,14 +80,14 @@ export default function Signup() {
                 </Field>
               </div>
               {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-              <button type="submit" disabled={loading} className="btn-primary w-full py-3">
-                {loading ? <Spinner className="text-white" /> : <>Créer mon compte <ArrowRight className="h-4 w-4" /></>}
+              <button type="submit" disabled={loading} className="public-button public-auth-submit">
+                {loading ? <Spinner className="text-white" /> : 'Créer mon compte'}
               </button>
             </form>
             <p className="mt-6 text-center text-sm text-slate-500">Déjà inscrit ? <Link to="/login" className="font-semibold text-brand-600">Se connecter</Link></p>
           </div>
       </div>
-      <Link to="/" className="text-center text-xs text-slate-400 hover:text-navy-700">← Retour au site</Link>
+      <Link to="/" className="public-auth-return">Retour au site</Link>
     </div>
   );
 }

@@ -48,6 +48,9 @@ export function ScoreGauge({ value, size = 230, label = 'Indice global', dark = 
   const [mx, my] = polar(cx, cx, r, START + (270 * shown) / 100);
   return (
     <div className="relative inline-flex flex-col items-center" style={{ width: size }}>
+      {/* Halo arc-en-ciel qui tourne lentement derrière la jauge */}
+      {dark && <div className="mce-spin-slow pointer-events-none absolute left-1/2 top-[44%] h-[86%] w-[86%] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 blur-2xl"
+        style={{ background: 'conic-gradient(from 0deg, #EF4444, #F59E0B, #2B9FDC, #10B981, #8B5CF6, #EF4444)' }} />}
       <svg width={size} height={size * 0.86} viewBox={`0 0 ${size} ${size * 0.86}`} className="overflow-visible">
         <defs>
           <linearGradient id={`g${id}`} x1="0" y1="1" x2="1" y2="0">
@@ -69,6 +72,8 @@ export function ScoreGauge({ value, size = 230, label = 'Indice global', dark = 
           return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={dark ? 'rgba(255,255,255,.25)' : '#CBD5E1'} strokeWidth={i % 3 === 0 ? 2 : 1} strokeLinecap="round" />;
         })}
         <path d={arcPath(cx, cx, r, START, END)} stroke={dark ? 'rgba(255,255,255,.12)' : '#EEF3F8'} strokeWidth="16" fill="none" strokeLinecap="round" />
+        <path d={arcPath(cx, cx, r, START, END)} stroke={`url(#g${id})`} strokeWidth="30" fill="none" strokeLinecap="round" opacity="0.28"
+          strokeDasharray={len} strokeDashoffset={len - (len * shown) / 100} style={{ filter: 'blur(10px)' }} />
         <path
           d={arcPath(cx, cx, r, START, END)}
           stroke={`url(#g${id})`}
@@ -79,15 +84,16 @@ export function ScoreGauge({ value, size = 230, label = 'Indice global', dark = 
           strokeDashoffset={len - (len * shown) / 100}
           filter={`url(#glow${id})`}
         />
+        <circle cx={mx} cy={my} r="11" fill="none" stroke={band.color} strokeWidth="3" className="mce-pulse-ring" style={{ transformBox: 'fill-box' }} />
         <circle cx={mx} cy={my} r="11" fill="white" stroke={band.color} strokeWidth="4" className="drop-shadow" />
       </svg>
-      <div className="absolute inset-x-0 top-[30%] flex flex-col items-center">
-        <span className={cn('text-[11px] font-bold uppercase tracking-[0.18em]', dark ? 'text-brand-200' : 'text-slate-400')}>{label}</span>
-        <span className={cn('font-display text-6xl font-extrabold leading-none', dark ? 'text-white' : 'text-navy-900')}>
+      <div className="absolute inset-x-0 top-[28%] flex flex-col items-center">
+        <span className={cn('font-display text-6xl font-extrabold leading-none', dark ? 'text-white drop-shadow-[0_0_18px_rgba(255,255,255,.35)]' : 'text-navy-900')}>
           {shown}
           <span className={cn('text-xl font-bold', dark ? 'text-navy-200' : 'text-slate-400')}>/100</span>
         </span>
-        <span className="mt-2 rounded-full px-3 py-1 text-xs font-bold text-white shadow" style={{ background: band.color }}>{band.label}</span>
+        <span className="mt-2 rounded-full px-3 py-1 text-xs font-bold text-white" style={{ background: band.color, boxShadow: `0 0 0 3px ${band.color}33, 0 8px 22px ${band.color}88` }}>{band.label}</span>
+        <span className={cn('mt-2 text-[10px] font-bold uppercase tracking-[0.18em]', dark ? 'text-brand-200' : 'text-slate-400')}>{label}</span>
       </div>
     </div>
   );
@@ -233,18 +239,18 @@ export function DimensionBars({ dimensions, previous }) {
         return (
           <div key={d.id} className="group animate-fade-in" style={{ animationDelay: `${i * 60}ms` }}>
             <div className="mb-1.5 flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2 text-sm font-bold text-navy-900">
-                <span className="h-2.5 w-2.5 rounded-full ring-4" style={{ background: col, '--tw-ring-color': `${col}22` }} />
-                {d.title}
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-bold text-navy-900">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full ring-4" style={{ background: col, '--tw-ring-color': `${col}22` }} />
+                <span className="min-w-0">{d.title}</span>
               </span>
-              <span className="flex items-center gap-2">
+              <span className="flex shrink-0 items-center gap-2">
                 {delta !== null && delta !== 0 && (
                   <span className={cn('rounded-full px-1.5 text-[11px] font-bold', delta > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600')}>
                     {delta > 0 ? '▲ +' : '▼ '}{delta}
                   </span>
                 )}
-                <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide" style={{ background: `${band.color}18`, color: band.color }}>{band.label}</span>
-                <span className="w-14 text-right font-display text-lg font-extrabold text-navy-900">{d.score}</span>
+                <span className="hidden whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide sm:inline" style={{ background: `${band.color}18`, color: band.color }}>{band.label}</span>
+                <span className="w-10 text-right font-display text-lg font-extrabold text-navy-900">{d.score}</span>
               </span>
             </div>
             <div className="relative h-3.5 rounded-full bg-slate-100">
@@ -252,9 +258,10 @@ export function DimensionBars({ dimensions, previous }) {
               {prev && <span className="absolute top-1/2 h-5 w-1 -translate-y-1/2 rounded bg-slate-400/70" style={{ left: `${prev.score}%` }} title="1re passation" />}
               <div className="h-full rounded-full animate-grow" style={{ width: `${d.score}%`, background: `linear-gradient(90deg, ${col}88, ${col})`, boxShadow: `0 0 14px ${col}66` }} />
             </div>
-            <div className="mt-1 flex gap-4 text-[11px] text-slate-400">
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-slate-400">
               <span>Auto-positionnement <b className="text-slate-600">{d.auto_score}</b></span>
               <span>Mise en situation <b className="text-slate-600">{d.situation_score}</b></span>
+              <span className="ml-auto font-bold uppercase tracking-wide sm:hidden" style={{ color: band.color }}>{band.label}</span>
             </div>
           </div>
         );
@@ -433,6 +440,7 @@ export function AxesChart({ values, compare, compareLabel }) {
             </div>
             <div className="relative h-4 rounded-full" style={{ background: 'linear-gradient(90deg,#6366F1 0%,#E2E8F0 50%,#F59E0B 100%)' }}>
               <span className="absolute left-1/2 top-0 h-full w-0.5 -translate-x-1/2 bg-white" />
+              <div className="absolute inset-y-0 left-3.5 right-3.5">
               {compare && (
                 <span className="absolute top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-navy-400 bg-white/60" style={{ left: `${(compare[ax.id] + 100) / 2}%` }} title={compareLabel} />
               )}
@@ -442,6 +450,7 @@ export function AxesChart({ values, compare, compareLabel }) {
               >
                 {Math.abs(v) >= 50 ? '●' : '◐'}
               </span>
+              </div>
             </div>
           </div>
         );

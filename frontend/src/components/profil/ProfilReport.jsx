@@ -1,6 +1,6 @@
 /* Rapport de profil professionnel — identique pour l'apprenant, le formateur et l'administrateur */
 import { Sparkles, ShieldAlert, Compass, Target, Lightbulb, CalendarCheck, MessageSquareQuote, TrendingUp, Handshake, ShieldCheck, Quote, Flag } from 'lucide-react';
-import { PM, DIM, DIM_COLORS, CONTEXT, profilType, narrative, gaps, runValues, bandOf, portrait, workWithTips, dimOf } from '../../data/profilModel';
+import { PM, DIM, DIM_COLORS, CONTEXT, profilType, narrative, gaps, runValues, bandOf, portraitParts, workWithTips, dimOf } from '../../data/profilModel';
 import { ScoreGauge, RadarChart, DimensionBars, DumbbellChart, AxesChart } from './Charts';
 import { formatDateTime } from '../../lib/utils';
 
@@ -19,9 +19,14 @@ function Section({ icon: Icon, title, subtitle, children, className = '' }) {
   );
 }
 
-const RELIA_TONE = { Bonne: 'bg-emerald-400/20 text-emerald-200', Correcte: 'bg-amber-300/20 text-amber-100', 'À confirmer': 'bg-red-400/20 text-red-200' };
+const RELIA_TONE = { Bonne: 'bg-emerald-400/20 text-emerald-200 ring-emerald-300/30', Correcte: 'bg-amber-300/20 text-amber-100 ring-amber-200/30', 'À confirmer': 'bg-red-400/20 text-red-200 ring-red-300/30' };
 
-export default function ProfilReport({ profil, name }) {
+/* « abdoulaye ndao » → « Abdoulaye Ndao » (affichage seulement) */
+const titleCase = (s = '') => s.trim().replace(/(^|[\s'’-])(\p{L})/gu, (m, sep, c) => sep + c.toUpperCase());
+
+
+export default function ProfilReport({ profil, name: rawName }) {
+  const name = titleCase(rawName || '');
   const runs = profil?.runs || [];
   const run = runs[runs.length - 1];
   const prev = runs.length > 1 ? runs[runs.length - 2] : null;
@@ -39,45 +44,63 @@ export default function ProfilReport({ profil, name }) {
     ctx.CTX_SENIORITY !== undefined && `⏳ ${CONTEXT[1].options[ctx.CTX_SENIORITY]} dans le poste`,
     ctx.CTX_CONTACT !== undefined && `🤝 Contact client : ${CONTEXT[2].options[ctx.CTX_CONTACT].toLowerCase()}`,
   ].filter(Boolean);
+  const mainColor = DIM_COLORS[ty.mainId];
 
   return (
     <div className="space-y-6">
-      {/* ======= EN-TÊTE ======= */}
+      {/* ======= EN-TÊTE ======= (disposition d'origine + bordure animée, aurores, étoiles, reflet) */}
+      <div className="mce-border rounded-[26px] p-[2px] shadow-[0_20px_60px_-15px_rgba(43,159,220,.45)]"
+        style={{ backgroundImage: `linear-gradient(120deg, #C9A227, #2B9FDC, ${mainColor}, #8B5CF6, #C9A227)` }}>
       <section className="relative overflow-hidden rounded-3xl bg-navy-900 p-6 text-white sm:p-10">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-brand-500/25 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 left-10 h-72 w-72 rounded-full blur-3xl" style={{ background: `${DIM_COLORS[ty.mainId]}40` }} />
+        <div className="mce-aurora pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-brand-500/30 blur-3xl" />
+        <div className="mce-aurora pointer-events-none absolute -bottom-32 left-10 h-72 w-72 rounded-full blur-3xl" style={{ background: `${mainColor}55`, animationDelay: '-6s' }} />
+        <div className="mce-aurora pointer-events-none absolute right-1/3 top-1/2 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl" style={{ animationDelay: '-3s' }} />
+        {[[8, 14], [22, 78], [35, 40], [62, 88], [78, 22], [88, 60], [15, 52], [50, 8], [70, 45], [92, 85]].map(([x, y], i) => (
+          <span key={i} className="mce-twinkle pointer-events-none absolute h-1 w-1 rounded-full bg-white" style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${(i * 0.37) % 3}s` }} />
+        ))}
         <div className="relative grid items-center gap-8 lg:grid-cols-[auto_1fr]">
           <div className="flex justify-center"><ScoreGauge value={r.global_score} dark label="Indice pédagogique" /></div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-300">Profil de fonctionnement professionnel</p>
-            <h1 className="mt-2 text-3xl font-extrabold sm:text-4xl">{name}</h1>
+            <h1 className="mt-2 break-words bg-gradient-to-r from-white via-white to-brand-200 bg-clip-text text-3xl font-extrabold text-transparent sm:text-4xl">{titleCase(name)}</h1>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-navy-200">
               <span>{formatDateTime(run.date)} · {run.minutes} min{run.timed_out ? ' · temps écoulé' : ''}{runs.length > 1 ? ` · passation n°${runs.length}` : ''}</span>
-              {r.reliability && <span className={`rounded-full px-2 py-0.5 font-bold ${RELIA_TONE[r.reliability.level]}`}>Fiabilité des réponses : {r.reliability.level}</span>}
+              {r.reliability && <span className={`rounded-full px-2 py-0.5 font-bold ring-1 ${RELIA_TONE[r.reliability.level]}`}>Fiabilité des réponses : {r.reliability.level}</span>}
               {deltaGlobal !== null && (
                 <span className={`rounded-full px-2 py-0.5 font-bold ${deltaGlobal >= 0 ? 'bg-emerald-400/20 text-emerald-300' : 'bg-red-400/20 text-red-300'}`}>
                   {deltaGlobal >= 0 ? '▲ +' : '▼ '}{deltaGlobal} depuis la passation précédente
                 </span>
               )}
             </div>
-            {chips.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{chips.map((c) => <span key={c} className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold ring-1 ring-white/15">{c}</span>)}</div>}
-            <div className="mt-5 flex items-center gap-4 rounded-2xl bg-white/10 p-5 ring-1 ring-white/15 backdrop-blur">
-              <span className="mce-float flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-4xl shadow-lift" style={{ background: DIM_COLORS[ty.mainId] }}>{ty.main.emoji}</span>
-              <div>
+            {chips.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {chips.map((c) => <span key={c} className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold ring-1 ring-white/15 backdrop-blur transition hover:bg-white/20">{c}</span>)}
+              </div>
+            )}
+            <div className="mce-shine relative mt-5 flex items-center gap-4 overflow-hidden rounded-2xl bg-white/10 p-5 ring-1 ring-white/20 backdrop-blur transition duration-300 hover:-translate-y-0.5 hover:bg-white/[0.13]">
+              <span className="mce-float flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-4xl ring-2 ring-white/25"
+                style={{ background: `linear-gradient(135deg, ${mainColor}, ${mainColor}aa)`, boxShadow: `0 0 0 6px ${mainColor}22, 0 12px 34px ${mainColor}99` }}>
+                {ty.main.emoji}
+              </span>
+              <div className="min-w-0">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-brand-200">Style de fonctionnement dominant</p>
-                <p className="text-2xl font-extrabold">{ty.main.nom} <span className="text-base font-semibold text-navy-200">· tendance {ty.second.nom} {ty.second.emoji}</span></p>
-                <p className="text-sm text-navy-100">{ty.main.court}.</p>
+                <p className="text-2xl font-extrabold">{ty.main.nom}</p>
+                <p className="text-sm font-semibold text-navy-200">Tendance {ty.second.nom} {ty.second.emoji}</p>
+                <p className="text-sm text-navy-100">{ty.main.court[0].toUpperCase() + ty.main.court.slice(1)}.</p>
               </div>
             </div>
           </div>
         </div>
       </section>
+      </div>
 
       {/* ======= PORTRAIT ======= */}
       <section className="card relative overflow-hidden p-6 sm:p-8">
         <Quote className="absolute right-6 top-6 h-16 w-16 text-brand-50" />
         <p className="eyebrow">Portrait professionnel</p>
-        <p className="relative mt-3 text-[17px] leading-relaxed text-navy-800">{portrait(run, name)}</p>
+        <div className="relative mt-3 space-y-3 text-[17px] leading-relaxed text-navy-800 sm:pr-20">
+          {portraitParts(run, name).map((t, i) => <p key={i}>{t}</p>)}
+        </div>
         {r.objective?.text && (
           <div className="mt-5 rounded-2xl bg-gold-100/50 p-4 text-sm ring-1 ring-gold-300">
             <p className="flex items-center gap-2 font-bold text-navy-900"><Flag className="h-4 w-4 text-gold-600" /> Ce que {first} attend de la formation</p>

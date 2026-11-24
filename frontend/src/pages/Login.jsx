@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Logo from '../components/layout/Logo';
 import { Spinner } from '../components/ui';
@@ -50,13 +50,14 @@ export default function Login() {
   };
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
+    <div className="public-auth public-auth-login">
       {/* Formulaire */}
-      <div className="flex flex-col px-6 py-8 sm:px-12">
+      <div className="public-auth-form">
         <Logo />
-        <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12">
-          <h1 className="text-3xl font-bold text-navy-900">{forgot ? 'Mot de passe oublié' : 'Bon retour 👋'}</h1>
-          <p className="mt-2 text-sm text-slate-500">
+        <div className="public-auth-card">
+          <div>
+          <h1>{forgot ? 'Mot de passe oublié' : 'Bon retour.'}</h1>
+          <p className="public-auth-intro">
             {forgot ? 'Recevez un lien pour choisir un nouveau mot de passe.' : 'Connectez-vous à votre espace de formation.'}
           </p>
 
@@ -99,8 +100,8 @@ export default function Login() {
 
             {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3">
-              {loading ? <Spinner className="text-white" /> : forgot ? 'Envoyer le lien' : <>Se connecter <ArrowRight className="h-4 w-4" /></>}
+            <button type="submit" disabled={loading} className="public-button public-auth-submit">
+              {loading ? <Spinner className="text-white" /> : forgot ? 'Envoyer le lien' : 'Se connecter'}
             </button>
             {forgot && (
               <button type="button" onClick={() => setForgot(false)} className="btn-ghost w-full">Retour à la connexion</button>
@@ -113,24 +114,22 @@ export default function Login() {
           <p className="mt-2 text-center text-xs text-slate-400">
             Un souci d’accès ? <a className="font-semibold text-brand-600" href={`mailto:${BRAND.contactEmail}`}>Contactez-nous</a>
           </p>
+          </div>
         </div>
-        <Link to="/" className="text-center text-xs text-slate-400 hover:text-navy-700">← Retour au site</Link>
+        <Link to="/" className="public-auth-return">Retour au site</Link>
       </div>
 
       {/* Visuel */}
-      <div className="relative hidden overflow-hidden bg-navy-900 lg:block">
-        <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle at 30% 30%, #2B9FDC 0, transparent 45%), radial-gradient(circle at 70% 80%, #186898 0, transparent 40%)' }} />
-        <div className="relative flex h-full flex-col justify-center px-16">
-          <img src="/logo.png" alt="" className="mb-10 h-24 w-24 rounded-3xl bg-white p-2" />
-          <h2 className="max-w-md text-4xl font-extrabold leading-tight text-white">
-            Se découvrir.<br /> S’exprimer.<br /> Agir. <span className="text-brand-400">Progresser.</span>
+      <div className="public-auth-visual">
+        <div>
+          <h2 className="public-display">
+            Se découvrir.<br /> S’exprimer.<br /> Agir.<br /><em>Progresser.</em>
           </h2>
-          <ul className="mt-10 space-y-4 text-navy-100">
+          <ul>
             {['Vos cours et exercices au même endroit', 'Votre progression en temps réel', 'Les retours de votre formateur'].map((t) => (
-              <li key={t} className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-brand-400" /> {t}</li>
+              <li key={t}>{t}</li>
             ))}
           </ul>
-          <div className="mt-12 h-1 w-16 rounded-full bg-gold-500" />
         </div>
       </div>
     </div>
