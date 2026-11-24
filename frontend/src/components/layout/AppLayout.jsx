@@ -59,6 +59,7 @@ const NAV = {
     { title: 'Pilotage', items: [{ to: '/admin', label: "Vue d'ensemble", icon: LayoutDashboard, end: true }] },
     { title: 'Organisation', items: [
       { to: '/admin/entreprises', label: 'Entreprises clientes', icon: Building2 },
+        { to: '/admin/gestion-entreprises', label: 'Gestion par entreprise', icon: Building2 },
       { to: '/admin/affectations', label: 'Affectations formateurs', icon: UserCog },
       { to: '/admin/formateurs', label: 'Formateurs', icon: UserCog },
       { to: '/admin/apprenants', label: 'Apprenants', icon: Users },
@@ -158,7 +159,7 @@ export default function AppLayout({ area }) {
               <NavLink to="/app" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><Eye className="h-4 w-4" /> Voir comme un apprenant</NavLink>
             )}
             {area === 'learner' && (
-              <NavLink to={isAdmin ? '/admin' : '/formateur'} className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Quitter lâ€™aperÃ§u apprenant</NavLink>
+              <NavLink to={isAdmin ? '/admin' : '/formateur'} className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Quitter l'apercu apprenant</NavLink>
             )}
           </div>
         )}
