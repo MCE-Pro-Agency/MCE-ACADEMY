@@ -1,29 +1,58 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink as RouterNavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, Award, UserCircle, Users, GraduationCap, ClipboardCheck,
-  Megaphone, Building2, ShieldCheck, LogOut, Menu, X, Eye, Settings, ChevronDown, Brain, BookMarked, UserCog, CalendarDays, FolderOpen, CalendarClock,
+  Megaphone, Building2, ShieldCheck, LogOut, Menu, X, Eye, Settings, ChevronDown, Brain, BookMarked, UserCog, CalendarDays, FolderOpen, CalendarClock, LockKeyhole,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/db';
 import { cn, ROLE_LABELS } from '../../lib/utils';
 import { Avatar } from '../ui';
 import Logo from './Logo';
+import { LEARNER_TABS, isTabOpen } from '../../lib/learnerTabs';
 
-/* Menus par espace, regroupés en rubriques explicites */
+/* Menus par espace, regroupÃ©s en rubriques explicites */
+// Les onglets ferment dans Supabase restent visibles et non cliquables pour l'apprenant.
+// Les liens Formateur et Administration restent inchangés.
+function NavLink({ to, className, children, onClick, ...props }) {
+  const { company, isLearner } = useAuth();
+  const tab = typeof to === 'string' ? LEARNER_TABS.find(x => x.to === to) : null;
+  const locked = Boolean(isLearner && tab && !isTabOpen(company, tab.key));
+  const styled = (state) => {
+    const base = typeof className === 'function' ? className(state) : (className || '');
+    return locked ? base + ' opacity-50 cursor-not-allowed' : base;
+  };
+  const icon = locked ? <LockKeyhole className="ml-auto h-4 w-4 shrink-0" aria-label="Verrouillé" /> : null;
+  const contents = typeof children === 'function'
+    ? (state) => <>{children(state)}{icon}</>
+    : <>{children}{icon}</>;
+  return (
+    <RouterNavLink {...props} to={to} className={styled}
+      aria-disabled={locked || undefined} tabIndex={locked ? -1 : props.tabIndex}
+      onClick={(event) => {
+        if (locked) { event.preventDefault(); return; }
+        if (onClick) onClick(event);
+      }}>
+      {contents}
+    </RouterNavLink>
+  );
+}
+
 const NAV = {
-  // Espace apprenant : le test de profil uniquement (le reste est porté par l'espace Formateur)
+  // Espace apprenant : le test de profil uniquement (le reste est portÃ© par l'espace Formateur)
   learner: [
     { title: 'Mon espace', items: [{ to: '/app/mon-profil', label: 'Mon test de profil', icon: Brain }] },
+    { title: 'Ma formation', items: LEARNER_TABS.map(tab => ({ to: tab.to, label: tab.label, icon: tab.icon })) },
   ],
   trainer: [
     { title: 'Espace formateur', items: [
       { to: '/formateur', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
       { to: '/formateur/cours', label: 'Mes formations', icon: GraduationCap },
-      { to: '/formateur/exercices', label: 'Exercices & évaluations', icon: ClipboardCheck },
+      { to: '/formateur/exercices', label: 'Exercices & Evaluations', icon: ClipboardCheck },
       { to: '/formateur/apprenants', label: 'Mes apprenants', icon: Users },
       { to: '/formateur/activites', label: 'Séances & activités', icon: CalendarClock },
       { to: '/formateur/rapports', label: 'Résultats & rapports', icon: Award },
+      { to: '/formateur/acces', label: 'Gestion des accès', icon: LockKeyhole },
     ] },
   ],
   admin: [
@@ -35,8 +64,8 @@ const NAV = {
       { to: '/admin/apprenants', label: 'Apprenants', icon: Users },
       { to: '/admin/utilisateurs', label: 'Tous les comptes', icon: ShieldCheck },
     ] },
-    { title: 'Suivi pédagogique', items: [
-      { to: '/admin/programme', label: 'Programme & évolution', icon: CalendarClock },
+    { title: 'Suivi pÃ©dagogique', items: [
+      { to: '/admin/programme', label: 'Programme & Ã©volution', icon: CalendarClock },
       { to: '/admin/profils', label: 'Profils professionnels', icon: Brain },
       { to: '/admin/documents', label: 'Documents', icon: FolderOpen },
     ] },
@@ -81,7 +110,7 @@ export default function AppLayout({ area }) {
               onChange={(e) => { setActiveCompanyId(e.target.value || null); if (location.pathname.match(/\/formateur\/(cours|apprenants)\/[^/]+/)) navigate('/formateur'); }}
               className="w-full appearance-none rounded-lg border-0 bg-navy-700 py-1.5 pl-2.5 pr-8 text-sm font-semibold text-white focus:ring-2 focus:ring-brand-400"
             >
-              <option value="">— Choisir une entreprise —</option>
+              <option value="">â€” Choisir une entreprise â€”</option>
               {authorizedCompanies.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -120,16 +149,16 @@ export default function AppLayout({ area }) {
           <div className="mt-3 border-t border-navy-800 pt-3">
             <p className="px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-navy-400">Raccourcis</p>
             {isAdmin && area !== 'admin' && (
-              <NavLink to="/admin" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Retour à l’administration</NavLink>
+              <NavLink to="/admin" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Retour Ã  lâ€™administration</NavLink>
             )}
             {isAdmin && area === 'admin' && (
-              <NavLink to="/formateur" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><GraduationCap className="h-4 w-4" /> Gérer les cours d’une entreprise</NavLink>
+              <NavLink to="/formateur" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><GraduationCap className="h-4 w-4" /> GÃ©rer les cours dâ€™une entreprise</NavLink>
             )}
             {area !== 'learner' && (
               <NavLink to="/app" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><Eye className="h-4 w-4" /> Voir comme un apprenant</NavLink>
             )}
             {area === 'learner' && (
-              <NavLink to={isAdmin ? '/admin' : '/formateur'} className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Quitter l’aperçu apprenant</NavLink>
+              <NavLink to={isAdmin ? '/admin' : '/formateur'} className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Quitter lâ€™aperÃ§u apprenant</NavLink>
             )}
           </div>
         )}
@@ -140,9 +169,9 @@ export default function AppLayout({ area }) {
           <Avatar name={profile?.full_name} src={profile?.avatar_url} size="sm" />
           <NavLink to={area === 'admin' ? '/admin/profil' : area === 'trainer' ? '/formateur/profil' : '/app/profil'} className="min-w-0 flex-1 hover:opacity-90">
             <p className="truncate text-sm font-semibold text-white">{profile?.full_name}</p>
-            <p className="truncate text-xs text-navy-300">{ROLE_LABELS[profile?.role]} · Mon compte</p>
+            <p className="truncate text-xs text-navy-300">{ROLE_LABELS[profile?.role]} Â· Mon compte</p>
           </NavLink>
-          <button onClick={handleLogout} title="Se déconnecter" className="rounded-lg p-2 text-navy-300 hover:bg-navy-800 hover:text-white">
+          <button onClick={handleLogout} title="Se dÃ©connecter" className="rounded-lg p-2 text-navy-300 hover:bg-navy-800 hover:text-white">
             <LogOut className="h-4 w-4" />
           </button>
         </div>

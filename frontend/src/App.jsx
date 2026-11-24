@@ -10,6 +10,7 @@ import NotFound from './pages/NotFound';
 import Profile from './pages/Profile';
 
 import ProfilPro from './pages/learner/ProfilPro';
+import LearnerTab from './pages/learner/LearnerTab';
 import ProfilsSuivi from './pages/shared/ProfilsSuivi';
 
 import TrainerDashboard from './pages/trainer/Dashboard';
@@ -26,6 +27,7 @@ import TrainerDocuments from './pages/trainer/Documents';
 import TrainerExercises from './pages/trainer/Exercises';
 import TrainerActivities from './pages/trainer/Activities';
 import TrainerReports from './pages/trainer/Reports';
+import AccessManagement from './pages/trainer/AccessManagement';
 
 import AdminDashboard from './pages/admin/Dashboard';
 import Companies from './pages/admin/Companies';
@@ -41,12 +43,18 @@ export default function App() {
       <Route path="/reinitialiser" element={<ResetPassword />} />
 
       {/* Espace apprenant : test de profil professionnel uniquement.
-          Les formations, modules, programme et exercices sont développés dans l'espace Formateur
-          (version précédente des pages apprenant : commit 4580c6d de la branche espace-apprenant). */}
+          Les formations, modules, programme et exercices sont dÃ©veloppÃ©s dans l'espace Formateur
+          (version prÃ©cÃ©dente des pages apprenant : commit 4580c6d de la branche espace-apprenant). */}
       <Route element={<ProtectedRoute roles={['learner', 'trainer', 'admin']} />}>
         <Route element={<AppLayout area="learner" />}>
           <Route path="/app" element={<Navigate to="/app/mon-profil" replace />} />
           <Route path="/app/mon-profil" element={<ProfilPro />} />
+          <Route path="/app/annonces" element={<LearnerTab tabKey="annonces" />} />
+          <Route path="/app/documents" element={<LearnerTab tabKey="documents" />} />
+          <Route path="/app/exercices" element={<LearnerTab tabKey="exercices" />} />
+          <Route path="/app/quiz" element={<LearnerTab tabKey="quiz" />} />
+          <Route path="/app/cours" element={<LearnerTab tabKey="cours" />} />
+          <Route path="/app/parcours" element={<LearnerTab tabKey="parcours" />} />
           <Route path="/app/profil" element={<Profile />} />
           <Route path="/app/*" element={<Navigate to="/app/mon-profil" replace />} />
         </Route>
@@ -67,6 +75,7 @@ export default function App() {
           <Route path="/formateur/exercices" element={<TrainerExercises />} />
           <Route path="/formateur/activites" element={<TrainerActivities />} />
           <Route path="/formateur/rapports" element={<TrainerReports />} />
+          <Route path="/formateur/acces" element={<AccessManagement />} />
           <Route path="/formateur/profils" element={<ProfilsSuivi scope="trainer" />} />
           <Route path="/formateur/annonces" element={<Announcements />} />
           <Route path="/formateur/entreprise" element={<CompanySettings />} />
@@ -89,7 +98,7 @@ export default function App() {
         </Route>
       </Route>
 
-      {/* Admin : vues qui nécessitent une entreprise sélectionnée */}
+      {/* Admin : vues qui nÃ©cessitent une entreprise sÃ©lectionnÃ©e */}
       <Route element={<ProtectedRoute roles={['admin']} needsCompany />}>
         <Route element={<AppLayout area="admin" />}>
           <Route path="/admin/programme" element={<TrainerProgramme base="/admin" />} />
