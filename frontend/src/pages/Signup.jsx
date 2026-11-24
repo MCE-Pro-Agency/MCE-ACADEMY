@@ -1,7 +1,7 @@
 /* Inscription d'un apprenant avec le code de son entreprise.
    Le rôle « apprenant » et l'entreprise sont fixés par la base (trigger handle_new_user,
    supabase/002_test_profil.sql) : le code est vérifié côté serveur, jamais côté navigateur. */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Building2, Lock, Mail, User } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -14,8 +14,20 @@ export default function Signup() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ full_name: '', email: '', password: '', confirm: '', join_code: (params.get('code') || '').toUpperCase() });
   const [loading, setLoading] = useState(false);
+  const [companies, setCompanies] = useState([]);
+  const [companyId, setCompanyId] = useState('');
+  const [loadingCompanies,setLoadingCompanies] = useState(true);
   const [error, setError] = useState(null);
   const [checkEmail, setCheckEmail] = useState(false);
+  useEffect(() => {
+    let active = true;
+    db.rpc('public_signup_companies').then(({data,error})=>{
+      if (!active) return;
+      setCompanies(error ? [] : (data||[]));
+      setLoadingCompanies(false);
+    });
+    return ()=>{active=false};
+  },[]);
   const set = (k) => (e) => setForm({ ...form, [k]: k === 'join_code' ? e.target.value.toUpperCase() : e.target.value });
 
   const submit = async (e) => {
@@ -23,12 +35,13 @@ export default function Signup() {
     setError(null);
     if (form.password.length < 8) return setError('Le mot de passe doit contenir au moins 8 caractères.');
     if (form.password !== form.confirm) return setError('Les deux mots de passe ne correspondent pas.');
+    if (!companyId) return setError('Sélectionnez votre entreprise.');
     setLoading(true);
-    // Vérifie le code avant de créer le compte (fonction publique, ne révèle que le nom de l'entreprise)
-    const { data: companyName, error: codeErr } = await db.rpc('company_for_join_code', { p_code: form.join_code.trim() });
-    if (codeErr || !companyName) {
+    // La base valide la paire entreprise + code ; le trigger conserve l'autorité finale.
+    const { data: match, error: codeErr } = await db.rpc('company_code_matches', { p_company:companyId, p_code: form.join_code.trim() });
+    if (codeErr || !match) {
       setLoading(false);
-      return setError('Code d’entreprise inconnu. Vérifiez-le auprès de votre formateur.');
+      return setError('Le code ne correspond pas à l’entreprise sélectionnée. Vérifiez-le auprès de MCE Academy.');
     }
     const { data, error: err } = await db.auth.signUp({
       email: form.email.trim(),
@@ -41,7 +54,7 @@ export default function Signup() {
     setLoading(false);
     if (err) return setError(err.message.includes('registered') ? 'Un compte existe déjà avec cet email : connectez-vous.' : err.message);
     if (!data.session) return setCheckEmail(true); // confirmation par email activée dans Supabase
-    toast.success(`Bienvenue chez ${companyName} !`);
+    toast.success(`Bienvenue chez ${companies.find(c=>c.id===companyId)?.name || 'MCE Academy'} !`);
     navigate('/app/mon-profil', { replace: true });
   };
 
@@ -61,8 +74,16 @@ export default function Signup() {
             <h1 className="text-2xl font-bold text-navy-900">Créer mon compte</h1>
             <p className="mt-1 text-sm text-slate-500">Inscrivez-vous, puis passez votre <b>test de profil professionnel</b> (environ 25 minutes).</p>
             <form onSubmit={submit} className="mt-6 space-y-4">
+              <div>
+                <label className="label" htmlFor="signup-company">Votre entreprise *</label>
+                <select id="signup-company" required className="input w-full" value={companyId} onChange={(e)=>setCompanyId(e.target.value)} disabled={loadingCompanies}>
+                  <option value="">{loadingCompanies ? 'Chargement des entreprises…' : 'Sélectionnez votre entreprise'}</option>
+                  {companies.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                {!loadingCompanies && !companies.length && <p className="mt-1 text-xs text-amber-700">Aucune entreprise disponible. La migration V4 doit être appliquée par MCE.</p>}
+              </div>
               <Field icon={Building2} label="Code de votre entreprise" hint="Donné par votre formateur">
-                <input required className="input pl-10 font-mono tracking-widest" placeholder="EX. VIGILUS2026" value={form.join_code} onChange={set('join_code')} />
+                <input required className="input pl-10 font-mono tracking-widest" placeholder="EX. VIGI2026" value={form.join_code} onChange={set('join_code')} />
               </Field>
               <Field icon={User} label="Prénom et nom">
                 <input required className="input pl-10" autoComplete="name" value={form.full_name} onChange={set('full_name')} />

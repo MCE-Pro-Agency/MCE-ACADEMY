@@ -29,6 +29,7 @@ import TrainerReports from './pages/trainer/Reports';
 
 import AdminDashboard from './pages/admin/Dashboard';
 import Companies from './pages/admin/Companies';
+import TrainerAssignments from './pages/admin/TrainerAssignments';
 import Users from './pages/admin/Users';
 
 export default function App() {
@@ -78,6 +79,7 @@ export default function App() {
         <Route element={<AppLayout area="admin" />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/entreprises" element={<Companies />} />
+          <Route path="/admin/affectations" element={<TrainerAssignments />} />
           <Route path="/admin/formateurs" element={<Users fixedRole="trainer" />} />
           <Route path="/admin/apprenants" element={<Users fixedRole="learner" />} />
           <Route path="/admin/utilisateurs" element={<Users />} />

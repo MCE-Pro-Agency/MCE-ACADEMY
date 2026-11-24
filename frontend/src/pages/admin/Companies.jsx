@@ -91,6 +91,7 @@ export default function Companies() {
                 <div className="rounded-xl bg-slate-50 py-2"><p className="font-bold text-navy-900">{c.stats.courses ?? 0}</p><p className="flex items-center justify-center gap-1 text-[11px] text-slate-500"><GraduationCap className="h-3 w-3" /> cours</p></div>
                 <div className="rounded-xl bg-slate-50 py-2"><p className="font-bold text-navy-900">{c.stats.total_hours ?? 0} h</p><p className="flex items-center justify-center gap-1 text-[11px] text-slate-500"><Clock className="h-3 w-3" /> formation</p></div>
               </div>
+              <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">Code d’inscription : <span className="font-mono font-semibold">{c.join_code || 'Non défini'}</span></p>
               <p className="mt-3 text-xs text-slate-400">{c.stats.trainers ?? 0} formateur(s) · dernière activité {timeAgo(c.stats.last_activity).toLowerCase()}</p>
               <div className="mt-auto flex items-center justify-between gap-2 pt-5">
                 <div className="flex">
@@ -117,6 +118,7 @@ function CompanyModal({ company, onClose, onSaved }) {
     sector: company?.sector || '',
     contact_email: company?.contact_email || '',
     max_learners: company?.max_learners || '',
+    join_code: company?.join_code || '',
   });
   const [trainer, setTrainer] = useState({ full_name: '', email: '', password: '' });
   const [saving, setSaving] = useState(false);
@@ -137,7 +139,8 @@ function CompanyModal({ company, onClose, onSaved }) {
         if (res.trainer?.profile) setResult({ email: res.trainer.profile.email, password: res.trainer.temporary_password || trainer.password });
         else onClose();
       } else {
-        const { error } = await db.from('companies').update({ ...form, max_learners: Number(form.max_learners) || null }).eq('id', company.id);
+        if (!/^[A-Z0-9_-]{6,32}$/.test(form.join_code.trim().toUpperCase())) throw new Error('Le code doit contenir 6 à 32 caractères (lettres, chiffres, _ ou -).');
+        const { error } = await db.from('companies').update({ ...form, join_code:form.join_code.trim().toUpperCase(), max_learners: Number(form.max_learners) || null }).eq('id', company.id);
         if (error) throw error;
         toast.success('Entreprise mise à jour');
         onSaved();
@@ -165,6 +168,7 @@ function CompanyModal({ company, onClose, onSaved }) {
             <Field label="Secteur"><input className="input" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} /></Field>
             <Field label="Nombre max. d’apprenants"><input type="number" min={0} className="input" value={form.max_learners} onChange={(e) => setForm({ ...form, max_learners: e.target.value })} /></Field>
           </div>
+          {!isNew && <Field label="Code unique d’inscription"><input className="input font-mono" maxLength={32} value={form.join_code} onChange={e=>setForm({...form,join_code:e.target.value.toUpperCase()})}/></Field>}
           <Field label="Email de contact"><input type="email" className="input" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} /></Field>
 
           {isNew && (

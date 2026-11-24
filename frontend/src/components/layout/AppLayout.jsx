@@ -30,6 +30,7 @@ const NAV = {
     { title: 'Pilotage', items: [{ to: '/admin', label: "Vue d'ensemble", icon: LayoutDashboard, end: true }] },
     { title: 'Organisation', items: [
       { to: '/admin/entreprises', label: 'Entreprises clientes', icon: Building2 },
+      { to: '/admin/affectations', label: 'Affectations formateurs', icon: UserCog },
       { to: '/admin/formateurs', label: 'Formateurs', icon: UserCog },
       { to: '/admin/apprenants', label: 'Apprenants', icon: Users },
       { to: '/admin/utilisateurs', label: 'Tous les comptes', icon: ShieldCheck },
@@ -45,20 +46,17 @@ const NAV = {
 const AREA_TITLES = { learner: 'Espace apprenant', trainer: 'Espace formateur', admin: 'Administration MCE' };
 
 export default function AppLayout({ area }) {
-  const { profile, company, isAdmin, isTrainer, signOut, activeCompanyId, setActiveCompanyId } = useAuth();
+  const { profile, company, isAdmin, isTrainer, signOut, activeCompanyId, setActiveCompanyId, authorizedCompanies } = useAuth();
   const [open, setOpen] = useState(false);
-  const [companies, setCompanies] = useState([]);
+
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => setOpen(false), [location.pathname]);
 
-  useEffect(() => {
-    if (isAdmin) db.from('companies').select('id, name').order('name').then(({ data }) => setCompanies(data || []));
-  }, [isAdmin]);
 
   const items = NAV[area] || [];
-  const activeCompanyName = isAdmin ? companies.find((c) => c.id === activeCompanyId)?.name : company?.name;
+  const activeCompanyName = authorizedCompanies.find((c) => c.id === activeCompanyId)?.name || company?.name;
 
   const handleLogout = async () => {
     await signOut();
@@ -76,15 +74,15 @@ export default function AppLayout({ area }) {
 
       <div className="mx-4 mb-4 rounded-xl bg-navy-800/70 px-4 py-3">
         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-300">{AREA_TITLES[area]}</p>
-        {area === 'trainer' && isAdmin ? (
+        {area === 'trainer' && (isAdmin || isTrainer) ? (
           <div className="relative mt-1.5">
             <select
               value={activeCompanyId || ''}
-              onChange={(e) => setActiveCompanyId(e.target.value || null)}
+              onChange={(e) => { setActiveCompanyId(e.target.value || null); if (location.pathname.match(/\/formateur\/(cours|apprenants)\/[^/]+/)) navigate('/formateur'); }}
               className="w-full appearance-none rounded-lg border-0 bg-navy-700 py-1.5 pl-2.5 pr-8 text-sm font-semibold text-white focus:ring-2 focus:ring-brand-400"
             >
               <option value="">— Choisir une entreprise —</option>
-              {companies.map((c) => (
+              {authorizedCompanies.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
@@ -174,7 +172,7 @@ export default function AppLayout({ area }) {
           <Logo to="/" />
         </header>
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
-          <Outlet />
+          <Outlet key={area === 'trainer' ? (activeCompanyId || 'no-company') : area} />
         </main>
       </div>
     </div>
