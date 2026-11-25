@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink as RouterNavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, Award, UserCircle, Users, GraduationCap, ClipboardCheck,
-  Megaphone, Building2, ShieldCheck, LogOut, Menu, X, Eye, Settings, ChevronDown, Brain, BookMarked, UserCog, CalendarDays, FolderOpen, CalendarClock, Lock,
+  Megaphone, Building2, ShieldCheck, LogOut, Menu, X, Eye, Settings, ChevronDown, Brain, BookMarked, UserCog, CalendarDays, FolderOpen, CalendarClock, Lock, LockKeyhole,
 } from 'lucide-react';
 import { LEARNER_TABS, isTabOpen } from '../../lib/learnerTabs';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,7 +11,33 @@ import { cn, ROLE_LABELS } from '../../lib/utils';
 import { Avatar } from '../ui';
 import Logo from './Logo';
 
-/* Menus par espace, regroupés en rubriques explicites */
+/* Menus par espace, regroupÃ©s en rubriques explicites */
+// Les onglets ferment dans Supabase restent visibles et non cliquables pour l'apprenant.
+// Les liens Formateur et Administration restent inchangés.
+function NavLink({ to, className, children, onClick, ...props }) {
+  const { company, isLearner } = useAuth();
+  const tab = typeof to === 'string' ? LEARNER_TABS.find(x => x.to === to) : null;
+  const locked = Boolean(isLearner && tab && !isTabOpen(company, tab.key));
+  const styled = (state) => {
+    const base = typeof className === 'function' ? className(state) : (className || '');
+    return locked ? base + ' opacity-50 cursor-not-allowed' : base;
+  };
+  const icon = locked ? <LockKeyhole className="ml-auto h-4 w-4 shrink-0" aria-label="Verrouillé" /> : null;
+  const contents = typeof children === 'function'
+    ? (state) => <>{children(state)}{icon}</>
+    : <>{children}{icon}</>;
+  return (
+    <RouterNavLink {...props} to={to} className={styled}
+      aria-disabled={locked || undefined} tabIndex={locked ? -1 : props.tabIndex}
+      onClick={(event) => {
+        if (locked) { event.preventDefault(); return; }
+        if (onClick) onClick(event);
+      }}>
+      {contents}
+    </RouterNavLink>
+  );
+}
+
 const NAV = {
   // Espace apprenant : le test de profil (toujours ouvert) + les onglets ouverts par le formateur
   learner: [
@@ -19,30 +45,28 @@ const NAV = {
     { title: 'Ma formation', items: LEARNER_TABS.map(({ key, to, label, icon }) => ({ key, to, label, icon })) },
   ],
   trainer: [
-    { title: 'Pilotage', items: [{ to: '/formateur', label: 'Tableau de bord', icon: LayoutDashboard, end: true }] },
-    { title: 'Mes apprenants', items: [
-      { to: '/formateur/programme', label: 'Programme & déblocage', icon: CalendarClock },
-      { to: '/formateur/apprenants', label: 'Suivi des apprenants', icon: Users },
-      { to: '/formateur/profils', label: 'Profils professionnels', icon: Brain },
-      { to: '/formateur/corrections', label: 'Corrections', icon: ClipboardCheck },
+    { title: 'Espace formateur', items: [
+      { to: '/formateur', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
+      { to: '/formateur/cours', label: 'Mes formations', icon: GraduationCap },
+      { to: '/formateur/exercices', label: 'Exercices & Evaluations', icon: ClipboardCheck },
+      { to: '/formateur/apprenants', label: 'Mes apprenants', icon: Users },
+      { to: '/formateur/activites', label: 'Séances & activités', icon: CalendarClock },
+      { to: '/formateur/rapports', label: 'Résultats & rapports', icon: Award },
+      { to: '/formateur/acces', label: 'Gestion des accès', icon: LockKeyhole },
     ] },
-    { title: 'Mes contenus', items: [
-      { to: '/formateur/cours', label: 'Cours & modules', icon: GraduationCap },
-      { to: '/formateur/documents', label: 'Documents', icon: FolderOpen },
-      { to: '/formateur/annonces', label: 'Annonces', icon: Megaphone },
-    ] },
-    { title: 'Paramètres', items: [{ to: '/formateur/entreprise', label: 'Mon entreprise', icon: Settings }] },
   ],
   admin: [
     { title: 'Pilotage', items: [{ to: '/admin', label: "Vue d'ensemble", icon: LayoutDashboard, end: true }] },
     { title: 'Organisation', items: [
       { to: '/admin/entreprises', label: 'Entreprises clientes', icon: Building2 },
+        { to: '/admin/gestion-entreprises', label: 'Gestion par entreprise', icon: Building2 },
+      { to: '/admin/affectations', label: 'Affectations formateurs', icon: UserCog },
       { to: '/admin/formateurs', label: 'Formateurs', icon: UserCog },
       { to: '/admin/apprenants', label: 'Apprenants', icon: Users },
       { to: '/admin/utilisateurs', label: 'Tous les comptes', icon: ShieldCheck },
     ] },
     { title: 'Suivi pédagogique', items: [
-      { to: '/admin/programme', label: 'Programme & évolution', icon: CalendarClock },
+      { to: '/admin/programme', label: 'Programme & Evolution', icon: CalendarClock },
       { to: '/admin/profils', label: 'Profils professionnels', icon: Brain },
       { to: '/admin/documents', label: 'Documents', icon: FolderOpen },
     ] },
@@ -52,20 +76,17 @@ const NAV = {
 const AREA_TITLES = { learner: 'Espace apprenant', trainer: 'Espace formateur', admin: 'Administration MCE' };
 
 export default function AppLayout({ area }) {
-  const { profile, company, isAdmin, isTrainer, signOut, activeCompanyId, setActiveCompanyId } = useAuth();
+  const { profile, company, isAdmin, isTrainer, signOut, activeCompanyId, setActiveCompanyId, authorizedCompanies } = useAuth();
   const [open, setOpen] = useState(false);
-  const [companies, setCompanies] = useState([]);
+
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => setOpen(false), [location.pathname]);
 
-  useEffect(() => {
-    if (isAdmin) db.from('companies').select('id, name').order('name').then(({ data }) => setCompanies(data || []));
-  }, [isAdmin]);
 
   const items = NAV[area] || [];
-  const activeCompanyName = isAdmin ? companies.find((c) => c.id === activeCompanyId)?.name : company?.name;
+  const activeCompanyName = authorizedCompanies.find((c) => c.id === activeCompanyId)?.name || company?.name;
 
   const handleLogout = async () => {
     await signOut();
@@ -83,15 +104,15 @@ export default function AppLayout({ area }) {
 
       <div className="mx-4 mb-4 rounded-xl bg-navy-800/70 px-4 py-3">
         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-300">{AREA_TITLES[area]}</p>
-        {area === 'trainer' && isAdmin ? (
+        {area === 'trainer' && (isAdmin || isTrainer) ? (
           <div className="relative mt-1.5">
             <select
               value={activeCompanyId || ''}
-              onChange={(e) => setActiveCompanyId(e.target.value || null)}
+              onChange={(e) => { setActiveCompanyId(e.target.value || null); if (location.pathname.match(/\/formateur\/(cours|apprenants)\/[^/]+/)) navigate('/formateur'); }}
               className="w-full appearance-none rounded-lg border-0 bg-navy-700 py-1.5 pl-2.5 pr-8 text-sm font-semibold text-white focus:ring-2 focus:ring-brand-400"
             >
-              <option value="">— Choisir une entreprise —</option>
-              {companies.map((c) => (
+              <option value="">Choisir une entreprise </option>
+              {authorizedCompanies.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
@@ -133,16 +154,16 @@ export default function AppLayout({ area }) {
           <div className="mt-3 border-t border-navy-800 pt-3">
             <p className="px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-navy-400">Raccourcis</p>
             {isAdmin && area !== 'admin' && (
-              <NavLink to="/admin" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Retour à l’administration</NavLink>
+              <NavLink to="/admin" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Retour à l'administration</NavLink>
             )}
             {isAdmin && area === 'admin' && (
-              <NavLink to="/formateur" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><GraduationCap className="h-4 w-4" /> Gérer les cours d’une entreprise</NavLink>
+              <NavLink to="/formateur" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><GraduationCap className="h-4 w-4" /> Gérer les cours d'une entreprise</NavLink>
             )}
             {area !== 'learner' && (
               <NavLink to="/app" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><Eye className="h-4 w-4" /> Voir comme un apprenant</NavLink>
             )}
             {area === 'learner' && (
-              <NavLink to={isAdmin ? '/admin' : '/formateur'} className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Quitter l’aperçu apprenant</NavLink>
+              <NavLink to={isAdmin ? '/admin' : '/formateur'} className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Quitter l'apercu apprenant</NavLink>
             )}
           </div>
         )}
@@ -153,9 +174,9 @@ export default function AppLayout({ area }) {
           <Avatar name={profile?.full_name} src={profile?.avatar_url} size="sm" />
           <NavLink to={area === 'admin' ? '/admin/profil' : area === 'trainer' ? '/formateur/profil' : '/app/profil'} className="min-w-0 flex-1 hover:opacity-90">
             <p className="truncate text-sm font-semibold text-white">{profile?.full_name}</p>
-            <p className="truncate text-xs text-navy-300">{ROLE_LABELS[profile?.role]} · Mon compte</p>
+            <p className="truncate text-xs text-navy-300">{ROLE_LABELS[profile?.role]} Â· Mon compte</p>
           </NavLink>
-          <button onClick={handleLogout} title="Se déconnecter" className="rounded-lg p-2 text-navy-300 hover:bg-navy-800 hover:text-white">
+          <button onClick={handleLogout} title="Se dÃ©connecter" className="rounded-lg p-2 text-navy-300 hover:bg-navy-800 hover:text-white">
             <LogOut className="h-4 w-4" />
           </button>
         </div>
@@ -185,7 +206,7 @@ export default function AppLayout({ area }) {
           <Logo to="/" />
         </header>
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
-          <Outlet />
+          <Outlet key={area === 'trainer' ? (activeCompanyId || 'no-company') : area} />
         </main>
       </div>
     </div>

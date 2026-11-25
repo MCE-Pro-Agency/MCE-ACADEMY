@@ -67,6 +67,12 @@ export default function TrainerDashboard() {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <Link to="/formateur/profils" className="btn-secondary text-sm">Profils professionnels</Link>
+        <Link to="/formateur/annonces" className="btn-secondary text-sm">Annonces</Link>
+        <Link to="/formateur/entreprise" className="btn-secondary text-sm">Mon entreprise</Link>
+      </div>
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard icon={Users} label="Apprenants" value={kpi.total} hint={`${kpi.active7} actifs cette semaine`} />
         <StatCard icon={TrendingUp} label="Progression moyenne" value={`${kpi.avgProgress}%`} tone="green" />

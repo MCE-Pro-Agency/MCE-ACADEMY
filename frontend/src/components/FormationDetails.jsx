@@ -7,7 +7,7 @@ export default function FormationDetails({ formation, formats, onClose }) {
   const dialogRef = useRef(null);
   const details = FORMATION_DETAILS[formation.title];
   const Icon = formation.icon;
-  const contactLink = `mailto:${BRAND.contactEmail}?subject=${encodeURIComponent(`Demande d’informations : ${formation.title}`)}`;
+  const contactLink = BRAND.contactUrl;
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -37,7 +37,7 @@ export default function FormationDetails({ formation, formats, onClose }) {
         </div>
         <div className="scroll-thin overflow-y-auto px-5 py-6 sm:px-8 sm:py-8">
           <div className="flex items-start gap-4">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white" style={{ backgroundColor: formation.color }}>
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--ink)] text-white">
               <Icon className="h-7 w-7" aria-hidden="true" />
             </span>
             <div>
@@ -55,7 +55,7 @@ export default function FormationDetails({ formation, formats, onClose }) {
           <div className="mt-4 space-y-4">
             {formation.topics.map((topic, index) => (
               <article key={topic} className="flex gap-3 rounded-2xl border border-slate-100 p-4">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" style={{ color: formation.color }} aria-hidden="true" />
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--ink)]" aria-hidden="true" />
                 <div><h4 className="font-bold">{topic}</h4><p className="mt-1 text-sm leading-relaxed text-slate-600">{details.topics[index]}</p></div>
               </article>
             ))}
@@ -96,7 +96,7 @@ export default function FormationDetails({ formation, formats, onClose }) {
         </div>
         <div className="flex shrink-0 flex-col gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <p className="flex items-center gap-2 text-xs text-slate-600"><Mail className="h-4 w-4 shrink-0" aria-hidden="true" />{BRAND.contactEmail}</p>
-          <a href={contactLink} className="btn bg-accent-400 text-navy-950 hover:bg-accent-300">Parlons de votre besoin</a>
+          <a href={contactLink} target="_blank" rel="noopener noreferrer" className="public-button">Parlons de votre besoin<span className="sr-only"> (nouvel onglet)</span></a>
         </div>
       </div>
     </dialog>

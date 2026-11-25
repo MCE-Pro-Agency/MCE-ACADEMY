@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ChevronDown, Check, X } from 'lucide-react';
 import { CLEF_APPLICATIONS, CLEF_FOLLOW_UP, CLEF_PRINCIPLES } from '../data/clef';
 
-export default function ClefDetails({ onClose }) {
+export default function ClefDetails({ onClose, focusLetter = null }) {
   const dialogRef = useRef(null);
 
   useEffect(() => {
@@ -11,6 +11,10 @@ export default function ClefDetails({ onClose }) {
     const trigger = document.activeElement;
     dialog.showModal();
     document.body.style.overflow = 'hidden';
+    // Ouvre la fiche directement sur le repère demandé (« En savoir plus » d'une carte).
+    if (focusLetter) {
+      requestAnimationFrame(() => dialog.querySelector(`#clef-detail-${focusLetter}`)?.closest('section')?.scrollIntoView({ block: 'start' }));
+    }
     return () => {
       dialog.close();
       document.body.style.overflow = previousOverflow;
@@ -52,7 +56,7 @@ export default function ClefDetails({ onClose }) {
                   <ul className="mt-4 space-y-3">
                     {practices.map((practice) => <li key={practice} className="flex gap-2.5 text-sm leading-relaxed"><Check className="mt-1 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />{practice}</li>)}
                   </ul>
-                  <div className="mt-5 border-l-2 border-accent-400 pl-4">
+                  <div className="mt-5 border-l-2 border-brand-400 pl-4">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-navy-700">Exemple de mise en pratique</h4>
                     <p className="mt-2 text-sm leading-relaxed text-slate-600">{example}</p>
                   </div>

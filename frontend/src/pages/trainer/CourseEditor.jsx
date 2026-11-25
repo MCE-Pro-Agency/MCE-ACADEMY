@@ -133,8 +133,19 @@ function ContentTab({ course, modules, reload, onEditLesson }) {
   };
 
   const deleteModule = async (m) => {
-    if (!confirm(`Supprimer le module « ${m.title} » et ses ${m.lessons.length} leçon(s) ?`)) return;
-    await db.from('modules').delete().eq('id', m.id);
+    const ids = m.lessons.map(l => l.id);
+    if (ids.length) {
+      const [{ count: progress, error: pe }, { count: copies, error: ce }, { count: attempts, error: ae }] = await Promise.all([
+        db.from('lesson_progress').select('lesson_id', { count: 'exact', head: true }).in('lesson_id', ids),
+        db.from('exercise_submissions').select('id', { count: 'exact', head: true }).in('lesson_id', ids),
+        db.from('quiz_attempts').select('id', { count: 'exact', head: true }).in('lesson_id', ids),
+      ]);
+      if (pe || ce || ae) return toast.error('Vérification des résultats impossible : suppression annulée.');
+      if (progress || copies || attempts) return toast.error('Ce module contient des résultats apprenants : suppression bloquée.');
+    }
+    if (!confirm(`Supprimer définitivement le module « ${m.title} » et ses ${ids.length} leçons ?`)) return;
+    const { error } = await db.from('modules').delete().eq('id', m.id);
+    if (error) return toast.error(error.message);
     reload();
   };
 
@@ -161,8 +172,16 @@ function ContentTab({ course, modules, reload, onEditLesson }) {
   };
 
   const deleteLesson = async (l) => {
-    if (!confirm(`Supprimer la leçon « ${l.title} » ?`)) return;
-    await db.from('lessons').delete().eq('id', l.id);
+    const [{ count: progress, error: pe }, { count: copies, error: ce }, { count: attempts, error: ae }] = await Promise.all([
+      db.from('lesson_progress').select('lesson_id', { count: 'exact', head: true }).eq('lesson_id', l.id),
+      db.from('exercise_submissions').select('id', { count: 'exact', head: true }).eq('lesson_id', l.id),
+      db.from('quiz_attempts').select('id', { count: 'exact', head: true }).eq('lesson_id', l.id),
+    ]);
+    if (pe || ce || ae) return toast.error('Vérification des résultats impossible : suppression annulée.');
+    if (progress || copies || attempts) return toast.error('Cette leçon a des réponses ou de la progression : suppression bloquée.');
+    if (!confirm(`Supprimer définitivement la leçon « ${l.title} » ?`)) return;
+    const { error } = await db.from('lessons').delete().eq('id', l.id);
+    if (error) return toast.error(error.message);
     reload();
   };
 

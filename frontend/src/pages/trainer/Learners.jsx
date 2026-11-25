@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { UserPlus, Upload, Download, Search, MoreVertical, KeyRound, UserX, UserCheck, Trash2, Eye, Users } from 'lucide-react';
+import { UserPlus, Upload, Download, SlidersHorizontal, MoreVertical, KeyRound, UserX, UserCheck, Trash2, Eye, Users, Building2, ArrowRight, ArrowLeft, Clock3, BookOpen } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/db';
 import { api } from '../../lib/api';
@@ -9,7 +9,9 @@ import { Avatar, Badge, CredentialBox, EmptyState, Field, Modal, PageLoader, Pro
 import { downloadCSV, formatDuration, normalizeImportRow, parseCSV, scoreColor, timeAgo, num } from '../../lib/utils';
 
 export default function Learners() {
-  const { activeCompanyId } = useAuth();
+  const { activeCompanyId, authorizedCompanies = [], companiesLoading, setActiveCompanyId } = useAuth();
+  const [openedCompanyId, setOpenedCompanyId] = useState(null);
+  const [companyCounts, setCompanyCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [learners, setLearners] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -22,18 +24,53 @@ export default function Learners() {
   const [credentials, setCredentials] = useState(null);
 
   const load = async () => {
+    if (!activeCompanyId) {
+      setLearners([]);
+      setCourses([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const [l, c] = await Promise.all([
       db.rpc('company_learner_stats', { p_company: activeCompanyId }),
       db.from('courses').select('id, title, is_published').eq('company_id', activeCompanyId).order('created_at'),
     ]);
+    if (l.error) console.error('V5 - Chargement des apprenants :', l.error);
+    if (c.error) console.error('V5 - Chargement des cours :', c.error);
     setLearners(l.data || []);
     setCourses(c.data || []);
+    setCompanyCounts((prev) => ({ ...prev, [activeCompanyId]: (l.data || []).length }));
     setLoading(false);
   };
 
   useEffect(() => {
-    if (activeCompanyId) load();
+    load();
   }, [activeCompanyId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Statistiques des cartes, limitées aux entreprises autorisées par la V4.
+  useEffect(() => {
+    let mounted = true;
+    if (!authorizedCompanies.length) { setCompanyCounts({}); return; }
+    Promise.all(authorizedCompanies.map(async (business) => {
+      const { data, error } = await db.rpc('company_learner_stats', { p_company: business.id });
+      return [business.id, error ? null : (data || []).length];
+    })).then((rows) => {
+      if (mounted) setCompanyCounts(Object.fromEntries(rows));
+    }).catch((error) => console.warn('V5 - Compteurs entreprises :', error));
+    return () => { mounted = false; };
+  }, [authorizedCompanies]);
+
+  const openCompany = (id) => {
+    if (!authorizedCompanies.some((c) => c.id === id)) return;
+    setMenu(null);
+    setSearch('');
+    setStatus('all');
+    setOpenedCompanyId(id);
+    setActiveCompanyId(id);
+  };
+
+  const currentCompany = authorizedCompanies.find((c) => c.id === activeCompanyId);
+  const showLearners = !!activeCompanyId && openedCompanyId === activeCompanyId;
 
   const filtered = useMemo(() => {
     const s = search.toLowerCase();
@@ -99,101 +136,116 @@ export default function Learners() {
       }))
     );
 
-  if (loading) return <PageLoader />;
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="page-title">Apprenants</h1>
-          <p className="page-subtitle">{learners.length} apprenant{learners.length > 1 ? 's' : ''} dans votre espace · notes, progression et temps de connexion.</p>
+          <h1 className="page-title">Mes apprenants</h1>
+          <p className="page-subtitle">Sélectionnez une entreprise pour consulter ses apprenants et leur suivi.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={exportCSV} className="btn-secondary"><Download className="h-4 w-4" /> Exporter</button>
-          <button onClick={() => setImportOpen(true)} className="btn-secondary"><Upload className="h-4 w-4" /> Importer CSV</button>
-          <button onClick={() => setAddOpen(true)} className="btn-primary"><UserPlus className="h-4 w-4" /> Ajouter</button>
-        </div>
+        <span className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700">{authorizedCompanies.length} entreprise{authorizedCompanies.length > 1 ? 's' : ''} accessible{authorizedCompanies.length > 1 ? 's' : ''}</span>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-          <input className="input pl-10" placeholder="Rechercher par nom, email, poste…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <select className="input sm:w-44" value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="all">Tous les statuts</option>
-          <option value="active">Actifs</option>
-          <option value="inactive">Désactivés</option>
-        </select>
-        <select className="input sm:w-52" value={sort} onChange={(e) => setSort(e.target.value)}>
-          <option value="name">Trier : nom</option>
-          <option value="progress">Trier : progression</option>
-          <option value="score">Trier : moyenne quiz</option>
-          <option value="time">Trier : temps de connexion</option>
-          <option value="recent">Trier : dernière connexion</option>
-        </select>
-      </div>
-
-      {learners.length === 0 ? (
-        <EmptyState icon={Users} title="Aucun apprenant" description="Ajoutez vos apprenants un par un ou importez une liste CSV." action={<button onClick={() => setAddOpen(true)} className="btn-primary"><UserPlus className="h-4 w-4" /> Ajouter un apprenant</button>} />
+      {companiesLoading ? (
+        <PageLoader />
+      ) : authorizedCompanies.length === 0 ? (
+        <EmptyState icon={Building2} title="Aucune entreprise attribuée" description="Contactez le Super Admin pour obtenir accès à une entreprise." />
       ) : (
-        <div className="card overflow-x-auto">
-          <table className="w-full min-w-[900px]">
-            <thead className="border-b border-slate-100 bg-slate-50/60">
-              <tr>
-                <th className="table-th">Apprenant</th>
-                <th className="table-th w-56">Progression</th>
-                <th className="table-th">Quiz</th>
-                <th className="table-th">Exercices</th>
-                <th className="table-th">Temps</th>
-                <th className="table-th">Dernière connexion</th>
-                <th className="table-th w-12" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {authorizedCompanies.map((business) => {
+            const selected = showLearners && activeCompanyId === business.id;
+            const count = companyCounts[business.id];
+            return (
+              <button
+                key={business.id}
+                type="button"
+                onClick={() => selected ? setOpenedCompanyId(null) : openCompany(business.id)}
+                aria-pressed={selected}
+                className={`rounded-2xl border p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${selected ? 'border-sky-400 bg-sky-50/70 ring-2 ring-sky-100' : 'border-slate-100 bg-white'}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-100 text-sky-700"><Building2 className="h-6 w-6" /></span>
+                  {selected ? <Badge tone="blue">Sélectionnée</Badge> : <ArrowRight className="h-5 w-5 text-slate-400" />}
+                </div>
+                <h2 className="mt-4 truncate text-lg font-bold text-navy-900">{business.name}</h2>
+                <p className="mt-1 text-sm text-slate-500">{count == null ? 'Effectif à vérifier' : `${count} apprenant${count > 1 ? 's' : ''}`}</p>
+                <div className="mt-4 flex items-center gap-1.5 text-sm font-semibold text-brand-600">{selected ? 'Masquer les apprenants' : 'Voir les apprenants'} <ArrowRight className="h-4 w-4" /></div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {showLearners && (
+        <section className="space-y-5" aria-label={`Apprenants de ${currentCompany?.name || 'l’entreprise'}`}>
+          <div className="flex flex-col justify-between gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center">
+            <div>
+              <button type="button" onClick={() => setOpenedCompanyId(null)} className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-navy-800"><ArrowLeft className="h-4 w-4" /> Entreprises</button>
+              <h2 className="text-xl font-bold text-navy-900">Apprenants · {currentCompany?.name}</h2>
+              <p className="text-sm text-slate-500">{learners.length} apprenant{learners.length > 1 ? 's' : ''} · fiches et suivis inchangés</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={exportCSV} className="btn-secondary"><Download className="h-4 w-4" /> Exporter</button>
+              <button onClick={() => setImportOpen(true)} className="btn-secondary"><Upload className="h-4 w-4" /> Importer CSV</button>
+              <button onClick={() => setAddOpen(true)} className="btn-primary"><UserPlus className="h-4 w-4" /> Ajouter</button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="relative flex-1">
+              <SlidersHorizontal className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-brand-600" />
+              <input className="input pl-10" placeholder="Rechercher par nom, email, poste…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <select className="input sm:w-44" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="all">Tous les statuts</option><option value="active">Actifs</option><option value="inactive">Désactivés</option>
+            </select>
+            <select className="input sm:w-52" value={sort} onChange={(e) => setSort(e.target.value)}>
+              <option value="name">Trier : nom</option><option value="progress">Trier : progression</option><option value="score">Trier : moyenne quiz</option><option value="time">Trier : temps de connexion</option><option value="recent">Trier : dernière connexion</option>
+            </select>
+          </div>
+
+          {loading ? <PageLoader /> : learners.length === 0 ? (
+            <EmptyState icon={Users} title="Aucun apprenant pour cette entreprise" description="Les apprenants inscrits dans cette entreprise apparaîtront ici." action={<button onClick={() => setAddOpen(true)} className="btn-primary"><UserPlus className="h-4 w-4" /> Ajouter un apprenant</button>} />
+          ) : filtered.length === 0 ? (
+            <EmptyState icon={Users} title="Aucun résultat" description="Modifiez votre recherche ou vos filtres." />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {filtered.map((l) => (
-                <tr key={l.user_id} className={`hover:bg-slate-50/60 ${!l.is_active ? 'opacity-60' : ''}`}>
-                  <td className="table-td">
-                    <Link to={`/formateur/apprenants/${l.user_id}`} className="flex items-center gap-3">
+                <article key={l.user_id} className={`relative rounded-2xl border border-slate-100 bg-white p-5 shadow-sm ${!l.is_active ? 'opacity-65' : ''}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <Link to={`/formateur/apprenants/${l.user_id}?onglet=profil`} className="flex min-w-0 items-center gap-3">
                       <Avatar name={l.full_name} size="sm" />
                       <div className="min-w-0">
-                        <p className="truncate font-semibold text-navy-900 hover:text-brand-600">{l.full_name}</p>
-                        <p className="truncate text-xs text-slate-500">{l.email}{l.job_title ? ` · ${l.job_title}` : ''}</p>
+                        <h3 className="truncate font-bold text-navy-900 hover:text-brand-600">{l.full_name}</h3>
+                        <p className="truncate text-xs text-slate-500">{l.job_title || l.email}</p>
                       </div>
-                      {!l.is_active && <Badge tone="red">Désactivé</Badge>}
                     </Link>
-                  </td>
-                  <td className="table-td">
-                    <ProgressBar value={l.progress_pct} size="sm" showLabel />
-                    <p className="mt-0.5 text-xs text-slate-400">{l.lessons_completed}/{l.total_lessons} leçons · {l.completed_courses}/{l.enrolled_courses} cours</p>
-                  </td>
-                  <td className={`table-td font-semibold ${scoreColor(l.avg_quiz_score)}`}>{num(l.avg_quiz_score) !== null ? `${num(l.avg_quiz_score)}%` : '—'}</td>
-                  <td className="table-td font-semibold">{num(l.avg_exercise_grade, 1) !== null ? `${num(l.avg_exercise_grade, 1)}/20` : '—'}</td>
-                  <td className="table-td whitespace-nowrap">{formatDuration(l.total_seconds)}<p className="text-xs text-slate-400">{l.sessions_count} sessions</p></td>
-                  <td className="table-td whitespace-nowrap text-slate-500">{timeAgo(l.last_seen_at)}</td>
-                  <td className="table-td relative">
-                    <button onClick={() => setMenu(menu === l.user_id ? null : l.user_id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-navy-800">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                    {menu === l.user_id && (
-                      <>
-                        <div className="fixed inset-0 z-10" onClick={() => setMenu(null)} />
-                        <div className="absolute right-4 top-10 z-20 w-56 rounded-xl bg-white py-1.5 shadow-lift ring-1 ring-slate-100" onClick={() => setMenu(null)}>
-                          <Link to={`/formateur/apprenants/${l.user_id}`} className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50"><Eye className="h-4 w-4" /> Voir le suivi</Link>
-                          <button onClick={() => resetPassword(l)} className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50"><KeyRound className="h-4 w-4" /> Nouveau mot de passe</button>
-                          <button onClick={() => toggleActive(l)} className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50">
-                            {l.is_active ? <><UserX className="h-4 w-4" /> Désactiver</> : <><UserCheck className="h-4 w-4" /> Réactiver</>}
-                          </button>
-                          <button onClick={() => remove(l)} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /> Supprimer</button>
-                        </div>
-                      </>
-                    )}
-                  </td>
-                </tr>
+                    <button type="button" aria-label={`Actions pour ${l.full_name}`} onClick={() => setMenu(menu === l.user_id ? null : l.user_id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-navy-800"><MoreVertical className="h-4 w-4" /></button>
+                  </div>
+                  {menu === l.user_id && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setMenu(null)} />
+                      <div className="absolute right-4 top-14 z-20 w-56 rounded-xl bg-white py-1.5 shadow-lift ring-1 ring-slate-100" onClick={() => setMenu(null)}>
+                        <Link to={`/formateur/apprenants/${l.user_id}`} className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50"><Eye className="h-4 w-4" /> Voir le suivi</Link>
+                        <button onClick={() => resetPassword(l)} className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50"><KeyRound className="h-4 w-4" /> Nouveau mot de passe</button>
+                        <button onClick={() => toggleActive(l)} className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50">{l.is_active ? <><UserX className="h-4 w-4" /> Désactiver</> : <><UserCheck className="h-4 w-4" /> Réactiver</>}</button>
+                        <button onClick={() => remove(l)} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /> Supprimer</button>
+                      </div>
+                    </>
+                  )}
+                  <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+                    <div className="flex items-center justify-between gap-2"><span className="text-xs text-slate-500">Progression</span><span className="text-xs font-semibold text-navy-900">{Number(l.progress_pct) || 0}%</span></div>
+                    <ProgressBar value={l.progress_pct} size="sm" />
+                    <div className="flex justify-between gap-3 text-xs text-slate-500"><span><BookOpen className="mr-1 inline h-3.5 w-3.5" />{l.lessons_completed}/{l.total_lessons} leçons</span><span><Clock3 className="mr-1 inline h-3.5 w-3.5" />{formatDuration(l.total_seconds)}</span></div>
+                    <div className="flex justify-between gap-3 text-xs"><span>Quiz : <strong className={scoreColor(l.avg_quiz_score)}>{num(l.avg_quiz_score) !== null ? `${num(l.avg_quiz_score)}%` : '—'}</strong></span><span>Exercices : <strong>{num(l.avg_exercise_grade, 1) !== null ? `${num(l.avg_exercise_grade, 1)}/20` : '—'}</strong></span></div>
+                    <div className="flex items-center justify-between gap-2 pt-2"><span className="text-xs text-slate-400">{timeAgo(l.last_seen_at)}</span>{!l.is_active && <Badge tone="red">Désactivé</Badge>}</div>
+                  </div>
+                  <Link to={`/formateur/apprenants/${l.user_id}?onglet=profil`} className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-sky-50 px-3 py-2.5 text-sm font-semibold text-sky-700 hover:bg-sky-100">Ouvrir la fiche existante <ArrowRight className="h-4 w-4" /></Link>
+                </article>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          )}
+        </section>
       )}
 
       <AddLearnerModal open={addOpen} onClose={() => setAddOpen(false)} courses={courses} companyId={activeCompanyId} onDone={load} />

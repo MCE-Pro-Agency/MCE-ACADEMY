@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
-import { UserPlus, Search, Pencil, Trash2, KeyRound, ShieldCheck } from 'lucide-react';
+import { Users as UsersIcon, UserPlus, Search, Pencil, Trash2, KeyRound, ShieldCheck, Building2, AlertTriangle, RefreshCcw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/db';
 import { api } from '../../lib/api';
@@ -20,6 +20,8 @@ export default function Users({ fixedRole = '' }) {
   const { profile: me } = useAuth();
   const [users, setUsers] = useState(null);
   const [companies, setCompanies] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState(fixedRole);
   useEffect(() => setRole(fixedRole), [fixedRole]);
@@ -29,12 +31,25 @@ export default function Users({ fixedRole = '' }) {
   const [credentials, setCredentials] = useState(null);
 
   const load = async () => {
-    const [{ data: u }, { data: c }] = await Promise.all([
-      db.from('profiles').select('*, company:companies!profiles_company_id_fkey(name)').order('created_at', { ascending: false }),
-      db.from('companies').select('id, name').order('name'),
-    ]);
-    setUsers(u || []);
-    setCompanies(c || []);
+    setLoading(true);
+    setLoadError('');
+    try {
+      const [u, c] = await Promise.all([
+        db.from('profiles').select('*, company:companies!profiles_company_id_fkey(name)').order('created_at', { ascending: false }),
+        db.from('companies').select('id, name').order('name'),
+      ]);
+      const problems = [];
+      if (u.error) problems.push('Comptes : ' + u.error.message);
+      if (c.error) problems.push('Entreprises : ' + c.error.message);
+      setLoadError(problems.join(' | '));
+      setUsers(u.error ? null : (u.data || []));
+      setCompanies(c.error ? [] : (c.data || []));
+    } catch (err) {
+      setLoadError(err.message || String(err));
+      setUsers(null);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
     load();
@@ -71,7 +86,7 @@ export default function Users({ fixedRole = '' }) {
     }
   };
 
-  if (!users) return <PageLoader />;
+  if (loading && !users) return <PageLoader />;
 
   return (
     <div className="space-y-6">
@@ -84,6 +99,7 @@ export default function Users({ fixedRole = '' }) {
         <button onClick={() => setModal('new')} className="btn-primary"><UserPlus className="h-4 w-4" /> {page.button}</button>
       </div>
 
+      {loadError && <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><div className="flex gap-2 font-bold"><AlertTriangle className="h-5 w-5" /> Erreur de chargement Supabase</div><p className="mt-1 break-words">{loadError}</p><p className="mt-2">Si une erreur CORS mentionne localhost:5174, redémarrez le frontend sur localhost:5173.</p><button className="btn-secondary mt-3" onClick={load}><RefreshCcw className="h-4 w-4" /> Réessayer</button></div>}
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
@@ -99,6 +115,17 @@ export default function Users({ fixedRole = '' }) {
         </select>
       </div>
 
+      <section aria-label="Entreprises et comptes" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <button type="button" onClick={() => setCompanyId('')} className={`rounded-2xl border p-4 text-left ${!companyId ? 'border-sky-500 bg-sky-50 ring-2 ring-sky-100' : 'border-slate-200 bg-white'}`}>
+          <div className="flex items-center gap-2 font-semibold"><UsersIcon className="h-5 w-5" /> Toutes les entreprises</div>
+          <p className="mt-2 text-sm text-slate-500">{(users || []).filter(u => !role || u.role === role).length} compte(s)</p>
+        </button>
+        {companies.map(c => <button key={c.id} type="button" onClick={() => setCompanyId(c.id)} className={`rounded-2xl border p-4 text-left ${companyId === c.id ? 'border-sky-500 bg-sky-50 ring-2 ring-sky-100' : 'border-slate-200 bg-white'}`}>
+          <div className="flex items-center gap-2 font-semibold"><Building2 className="h-5 w-5" /> {c.name}</div>
+          <p className="mt-2 text-sm text-slate-500">{(users || []).filter(u => u.company_id === c.id && (!role || u.role === role)).length} compte(s) {role ? 'dans ce rôle' : 'rattachés'}</p>
+        </button>)}
+      </section>
+      {!loading && !loadError && !filtered.length && <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Aucun compte ne correspond aux filtres sélectionnés.</p>}
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[760px]">
           <thead className="border-b border-slate-100 bg-slate-50/60">
