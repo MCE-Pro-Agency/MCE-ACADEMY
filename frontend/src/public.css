@@ -317,6 +317,7 @@
 .lx-collage-main { width: 100%; aspect-ratio: 4 / 5; box-shadow: 0 30px 60px -20px rgba(11, 29, 51, .35); }
 .lx-collage-second { position: absolute; left: 0; bottom: 0; width: 44%; aspect-ratio: 3 / 4; border: 6px solid #FFFFFF; box-shadow: 0 18px 40px rgba(11, 29, 51, .22); }
 .lx-collage-dots { position: absolute; top: -26px; right: -26px; width: 160px; height: 160px; background-image: radial-gradient(var(--blue) 1.6px, transparent 1.6px); background-size: 16px 16px; opacity: .25; }
+@media (max-width: 760px) { .lx-collage-dots { right: 0; } }
 .lx-collage-badge { position: absolute; top: 40px; left: 0; width: 176px; padding: 20px; border-radius: 16px; background: linear-gradient(135deg, var(--blue), #3E95DA); color: #FFFFFF; box-shadow: 0 18px 40px rgba(28, 111, 184, .35); animation: lxFloat 6s ease-in-out infinite; }
 .lx-collage-badge strong { display: block; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2rem; font-weight: 800; line-height: 1.1; }
 .lx-collage-badge > span { display: block; margin-top: 4px; font-size: .82rem; color: #DCEBF8; }
@@ -630,7 +631,7 @@
   .public-section { padding-block: 42px; }
   .public-topbar > .public-wrap, .public-topbar > .public-wrap > div { gap: 8px; }
   .public-topbar { font-size: .75rem; }
-  .public-topbar .public-topbar-email, .public-topbar-countries > span:first-child, .public-topbar-socials { display: none; }
+  .public-topbar .public-topbar-email, .public-topbar-countries > span:first-child, .public-topbar ul.public-topbar-socials { display: none; }
   .public-topbar-phones a { padding-inline: 6px; }
   .public-header-inner { min-height: 72px; }
   .public-footer { padding-top: 42px; }

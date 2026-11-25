@@ -58,7 +58,6 @@ export default function App() {
           <Route path="/app/cours" element={<LearnerTab tabKey="cours" />} />
           <Route path="/app/parcours" element={<LearnerTab tabKey="parcours" />} />
           <Route path="/app/profil" element={<Profile />} />
-          {LEARNER_TABS.map((t) => <Route key={t.key} path={t.to} element={<LearnerTab tabKey={t.key} />} />)}
           <Route path="/app/*" element={<Navigate to="/app/mon-profil" replace />} />
         </Route>
       </Route>
