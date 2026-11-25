@@ -65,8 +65,8 @@ const NAV = {
       { to: '/admin/apprenants', label: 'Apprenants', icon: Users },
       { to: '/admin/utilisateurs', label: 'Tous les comptes', icon: ShieldCheck },
     ] },
-    { title: 'Suivi pÃ©dagogique', items: [
-      { to: '/admin/programme', label: 'Programme & Ã©volution', icon: CalendarClock },
+    { title: 'Suivi pédagogique', items: [
+      { to: '/admin/programme', label: 'Programme & Evolution', icon: CalendarClock },
       { to: '/admin/profils', label: 'Profils professionnels', icon: Brain },
       { to: '/admin/documents', label: 'Documents', icon: FolderOpen },
     ] },
@@ -111,7 +111,7 @@ export default function AppLayout({ area }) {
               onChange={(e) => { setActiveCompanyId(e.target.value || null); if (location.pathname.match(/\/formateur\/(cours|apprenants)\/[^/]+/)) navigate('/formateur'); }}
               className="w-full appearance-none rounded-lg border-0 bg-navy-700 py-1.5 pl-2.5 pr-8 text-sm font-semibold text-white focus:ring-2 focus:ring-brand-400"
             >
-              <option value="">â€” Choisir une entreprise â€”</option>
+              <option value="">Choisir une entreprise </option>
               {authorizedCompanies.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -150,10 +150,10 @@ export default function AppLayout({ area }) {
           <div className="mt-3 border-t border-navy-800 pt-3">
             <p className="px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-navy-400">Raccourcis</p>
             {isAdmin && area !== 'admin' && (
-              <NavLink to="/admin" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Retour Ã  lâ€™administration</NavLink>
+              <NavLink to="/admin" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><ShieldCheck className="h-4 w-4" /> Retour à l'administration</NavLink>
             )}
             {isAdmin && area === 'admin' && (
-              <NavLink to="/formateur" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><GraduationCap className="h-4 w-4" /> GÃ©rer les cours dâ€™une entreprise</NavLink>
+              <NavLink to="/formateur" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><GraduationCap className="h-4 w-4" /> Gérer les cours d'une entreprise</NavLink>
             )}
             {area !== 'learner' && (
               <NavLink to="/app" className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm text-navy-200 hover:bg-navy-800 hover:text-white"><Eye className="h-4 w-4" /> Voir comme un apprenant</NavLink>
