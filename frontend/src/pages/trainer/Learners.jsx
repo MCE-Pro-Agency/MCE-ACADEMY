@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { UserPlus, Upload, Download, SlidersHorizontal, MoreVertical, KeyRound, UserX, UserCheck, Trash2, Eye, Users, Building2, ArrowRight, ArrowLeft, Clock3, BookOpen } from 'lucide-react';
+import { UserPlus, Upload, Download, SlidersHorizontal, MoreVertical, KeyRound, UserX, UserCheck, Trash2, Eye, Users, Building2, ArrowRight, ArrowLeft, Clock3, BookOpen, Send } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/db';
 import { api } from '../../lib/api';
-import { Avatar, Badge, CredentialBox, EmptyState, Field, Modal, PageLoader, ProgressBar, Spinner } from '../../components/ui';
+import { Avatar, Badge, EmptyState, Field, Modal, PageLoader, ProgressBar, Spinner } from '../../components/ui';
+import { AccountStatusBadge, useAccountStatuses } from '../../components/AccountStatus';
 import { downloadCSV, formatDuration, normalizeImportRow, parseCSV, scoreColor, timeAgo, num } from '../../lib/utils';
 
 export default function Learners() {
@@ -21,7 +22,17 @@ export default function Learners() {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [menu, setMenu] = useState(null);
-  const [credentials, setCredentials] = useState(null);
+  const { statuses, reloadStatuses } = useAccountStatuses(activeCompanyId);
+
+  const resendInvite = async (l) => {
+    try {
+      await api(`/users/${l.user_id}/invite`, { method: 'POST' });
+      toast.success(`Invitation renvoyée à ${l.email}.`);
+      reloadStatuses();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
 
   const load = async () => {
     if (!activeCompanyId) {
@@ -100,9 +111,10 @@ export default function Learners() {
   };
 
   const resetPassword = async (l) => {
+    if (!confirm(`Envoyer à ${l.email} un e-mail pour choisir un nouveau mot de passe ?`)) return;
     try {
-      const res = await api(`/users/${l.user_id}/reset-password`, { method: 'POST' });
-      setCredentials({ email: l.email, password: res.temporary_password });
+      await api(`/users/${l.user_id}/reset-password`, { method: 'POST' });
+      toast.success(`E-mail de réinitialisation envoyé à ${l.email}.`);
     } catch (e) {
       toast.error(e.message);
     }
@@ -227,7 +239,8 @@ export default function Learners() {
                       <div className="fixed inset-0 z-10" onClick={() => setMenu(null)} />
                       <div className="absolute right-4 top-14 z-20 w-56 rounded-xl bg-white py-1.5 shadow-lift ring-1 ring-slate-100" onClick={() => setMenu(null)}>
                         <Link to={`/formateur/apprenants/${l.user_id}`} className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50"><Eye className="h-4 w-4" /> Voir le suivi</Link>
-                        <button onClick={() => resetPassword(l)} className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50"><KeyRound className="h-4 w-4" /> Nouveau mot de passe</button>
+                        <button onClick={() => resetPassword(l)} className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50"><KeyRound className="h-4 w-4" /> Lien de nouveau mot de passe</button>
+                        {['invited', 'unconfirmed'].includes(statuses[l.user_id]?.status) && <button onClick={() => resendInvite(l)} className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50"><Send className="h-4 w-4" /> Renvoyer l’invitation</button>}
                         <button onClick={() => toggleActive(l)} className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50">{l.is_active ? <><UserX className="h-4 w-4" /> Désactiver</> : <><UserCheck className="h-4 w-4" /> Réactiver</>}</button>
                         <button onClick={() => remove(l)} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /> Supprimer</button>
                       </div>
@@ -238,7 +251,7 @@ export default function Learners() {
                     <ProgressBar value={l.progress_pct} size="sm" />
                     <div className="flex justify-between gap-3 text-xs text-slate-500"><span><BookOpen className="mr-1 inline h-3.5 w-3.5" />{l.lessons_completed}/{l.total_lessons} leçons</span><span><Clock3 className="mr-1 inline h-3.5 w-3.5" />{formatDuration(l.total_seconds)}</span></div>
                     <div className="flex justify-between gap-3 text-xs"><span>Quiz : <strong className={scoreColor(l.avg_quiz_score)}>{num(l.avg_quiz_score) !== null ? `${num(l.avg_quiz_score)}%` : '—'}</strong></span><span>Exercices : <strong>{num(l.avg_exercise_grade, 1) !== null ? `${num(l.avg_exercise_grade, 1)}/20` : '—'}</strong></span></div>
-                    <div className="flex items-center justify-between gap-2 pt-2"><span className="text-xs text-slate-400">{timeAgo(l.last_seen_at)}</span>{!l.is_active && <Badge tone="red">Désactivé</Badge>}</div>
+                    <div className="flex items-center justify-between gap-2 pt-2"><span className="text-xs text-slate-400">{timeAgo(l.last_seen_at)}</span><AccountStatusBadge status={statuses[l.user_id] || (!l.is_active ? { status: 'disabled' } : null)} /></div>
                   </div>
                   <Link to={`/formateur/apprenants/${l.user_id}?onglet=profil`} className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-sky-50 px-3 py-2.5 text-sm font-semibold text-sky-700 hover:bg-sky-100">Ouvrir la fiche existante <ArrowRight className="h-4 w-4" /></Link>
                 </article>
@@ -248,11 +261,8 @@ export default function Learners() {
         </section>
       )}
 
-      <AddLearnerModal open={addOpen} onClose={() => setAddOpen(false)} courses={courses} companyId={activeCompanyId} onDone={load} />
-      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} courses={courses} companyId={activeCompanyId} onDone={load} />
-      <Modal open={!!credentials} onClose={() => setCredentials(null)} title="Nouveau mot de passe" size="sm">
-        {credentials && <CredentialBox email={credentials.email} password={credentials.password} />}
-      </Modal>
+      <AddLearnerModal open={addOpen} onClose={() => setAddOpen(false)} courses={courses} companyId={activeCompanyId} onDone={() => { load(); reloadStatuses(); }} />
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} courses={courses} companyId={activeCompanyId} onDone={() => { load(); reloadStatuses(); }} />
     </div>
   );
 }
@@ -278,7 +288,7 @@ function CourseChecklist({ courses, value, onChange }) {
 }
 
 function AddLearnerModal({ open, onClose, courses, companyId, onDone }) {
-  const empty = { full_name: '', email: '', job_title: '', password: '' };
+  const empty = { full_name: '', email: '', job_title: '' };
   const [form, setForm] = useState(empty);
   const [courseIds, setCourseIds] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -297,8 +307,8 @@ function AddLearnerModal({ open, onClose, courses, companyId, onDone }) {
     setSaving(true);
     try {
       const res = await api('/users', { method: 'POST', body: { ...form, role: 'learner', company_id: companyId, course_ids: courseIds } });
-      toast.success('Apprenant ajouté');
-      setResult({ email: res.profile.email, password: res.temporary_password || form.password });
+      toast.success('Invitation envoyée');
+      setResult({ email: res.profile.email });
       onDone();
     } catch (err) {
       toast.error(err.message);
@@ -308,10 +318,10 @@ function AddLearnerModal({ open, onClose, courses, companyId, onDone }) {
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Ajouter un apprenant" description="Le compte est créé immédiatement, sans email de confirmation.">
+    <Modal open={open} onClose={onClose} title="Ajouter un apprenant" description="L’apprenant reçoit une invitation par e-mail : il confirme son adresse et choisit son mot de passe.">
       {result ? (
         <div className="space-y-4">
-          <CredentialBox email={result.email} password={result.password} />
+          <p className="rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900">Invitation envoyée à <b>{result.email}</b>. Le compte sera actif dès que l’apprenant aura ouvert le lien.</p>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" onClick={() => { setResult(null); setForm(empty); }}>Ajouter un autre</button>
             <button className="btn-primary" onClick={onClose}>Terminer</button>
@@ -323,14 +333,13 @@ function AddLearnerModal({ open, onClose, courses, companyId, onDone }) {
             <Field label="Nom complet *"><input required className="input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></Field>
             <Field label="Email *"><input required type="email" className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
             <Field label="Poste / fonction"><input className="input" value={form.job_title} onChange={(e) => setForm({ ...form, job_title: e.target.value })} /></Field>
-            <Field label="Mot de passe" hint="Laisser vide pour en générer un"><input className="input" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
           </div>
           <Field label="Inscrire aux cours">
             <CourseChecklist courses={courses} value={courseIds} onChange={setCourseIds} />
           </Field>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="btn-ghost">Annuler</button>
-            <button className="btn-primary" disabled={saving}>{saving ? <Spinner className="text-white" /> : <><UserPlus className="h-4 w-4" /> Créer le compte</>}</button>
+            <button className="btn-primary" disabled={saving}>{saving ? <Spinner className="text-white" /> : <><UserPlus className="h-4 w-4" /> Envoyer l’invitation</>}</button>
           </div>
         </form>
       )}
@@ -365,7 +374,7 @@ function ImportModal({ open, onClose, courses, companyId, onDone }) {
     try {
       const res = await api('/users/import', { method: 'POST', body: { users: rows, course_ids: courseIds, company_id: companyId } });
       setResult(res);
-      toast.success(`${res.created.length} compte(s) créé(s)`);
+      toast.success(`${res.created.length} invitation(s) envoyée(s)`);
       onDone();
     } catch (err) {
       toast.error(err.message);
@@ -380,12 +389,8 @@ function ImportModal({ open, onClose, courses, companyId, onDone }) {
     <Modal open={open} onClose={onClose} title="Importer des apprenants" description="Fichier CSV avec les colonnes : email, prenom, nom, poste." size="lg">
       {result ? (
         <div className="space-y-4">
-          <p className="text-sm text-navy-800"><strong>{result.created.length}</strong> compte(s) créé(s), <strong>{result.errors.length}</strong> erreur(s).</p>
-          {result.created.length > 0 && (
-            <button className="btn-gold" onClick={() => downloadCSV('identifiants_apprenants.csv', result.created.map((c) => ({ Nom: c.full_name, Email: c.email, 'Mot de passe temporaire': c.temporary_password })))}>
-              <Download className="h-4 w-4" /> Télécharger les identifiants
-            </button>
-          )}
+          <p className="text-sm text-navy-800"><strong>{result.created.length}</strong> invitation(s) envoyée(s), <strong>{result.errors.length}</strong> erreur(s).</p>
+          {result.created.length > 0 && <p className="text-sm text-slate-600">Chaque apprenant reçoit un e-mail pour confirmer son adresse et choisir son mot de passe. Suivez les activations dans la liste (statut « Invitation en attente »).</p>}
           {result.errors.length > 0 && (
             <ul className="max-h-40 overflow-y-auto rounded-xl bg-red-50 p-3 text-sm text-red-700">
               {result.errors.map((e) => <li key={e.email}>{e.email} : {e.error}</li>)}

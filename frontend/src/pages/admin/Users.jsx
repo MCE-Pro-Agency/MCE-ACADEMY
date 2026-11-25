@@ -5,7 +5,8 @@ import { Users as UsersIcon, UserPlus, Search, Pencil, Trash2, KeyRound, ShieldC
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/db';
 import { api } from '../../lib/api';
-import { Avatar, Badge, CredentialBox, Field, Modal, PageLoader, Spinner, Toggle } from '../../components/ui';
+import { Avatar, Badge, Field, Modal, PageLoader, Spinner, Toggle } from '../../components/ui';
+import { AccountStatusBadge, ResendInviteButton, useAccountStatuses } from '../../components/AccountStatus';
 import { ROLE_LABELS, timeAgo } from '../../lib/utils';
 
 const ROLE_TONES = { admin: 'navy', trainer: 'brand', learner: 'slate' };
@@ -28,7 +29,7 @@ export default function Users({ fixedRole = '' }) {
   const page = PAGE[fixedRole];
   const [companyId, setCompanyId] = useState('');
   const [modal, setModal] = useState(null);
-  const [credentials, setCredentials] = useState(null);
+  const { statuses, statusError, reloadStatuses } = useAccountStatuses();
 
   const load = async () => {
     setLoading(true);
@@ -78,9 +79,10 @@ export default function Users({ fixedRole = '' }) {
   };
 
   const reset = async (u) => {
+    if (!confirm(`Envoyer à ${u.email} un e-mail pour choisir un nouveau mot de passe ?`)) return;
     try {
-      const res = await api(`/users/${u.id}/reset-password`, { method: 'POST' });
-      setCredentials({ email: u.email, password: res.temporary_password });
+      await api(`/users/${u.id}/reset-password`, { method: 'POST' });
+      toast.success(`E-mail de réinitialisation envoyé à ${u.email}.`);
     } catch (e) {
       toast.error(e.message);
     }
@@ -127,12 +129,13 @@ export default function Users({ fixedRole = '' }) {
       </section>
       {!loading && !loadError && !filtered.length && <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Aucun compte ne correspond aux filtres sélectionnés.</p>}
       <div className="card overflow-x-auto">
-        <table className="w-full min-w-[760px]">
+        <table className="w-full min-w-[900px]">
           <thead className="border-b border-slate-100 bg-slate-50/60">
             <tr>
               <th className="table-th">Utilisateur</th>
               <th className="table-th">Rôle</th>
               <th className="table-th">Entreprise</th>
+              <th className="table-th">Statut</th>
               <th className="table-th">Dernière connexion</th>
               <th className="table-th w-36" />
             </tr>
@@ -154,11 +157,13 @@ export default function Users({ fixedRole = '' }) {
                 </td>
                 <td className="table-td"><Badge tone={ROLE_TONES[u.role]} icon={u.role === 'admin' ? ShieldCheck : undefined}>{ROLE_LABELS[u.role]}</Badge></td>
                 <td className="table-td text-slate-600">{u.company?.name || '—'}</td>
+                <td className="table-td"><AccountStatusBadge status={statuses[u.id]} /></td>
                 <td className="table-td text-slate-500">{timeAgo(u.last_seen_at)}</td>
                 <td className="table-td">
                   <div className="flex justify-end">
                     <button onClick={() => setModal(u)} className="btn-ghost btn-sm" title="Modifier"><Pencil className="h-4 w-4" /></button>
-                    <button onClick={() => reset(u)} className="btn-ghost btn-sm" title="Nouveau mot de passe"><KeyRound className="h-4 w-4" /></button>
+                    <ResendInviteButton userId={u.id} status={statuses[u.id]} onDone={reloadStatuses} />
+                    <button onClick={() => reset(u)} className="btn-ghost btn-sm" title="Envoyer un lien de réinitialisation du mot de passe" aria-label="Envoyer un lien de réinitialisation du mot de passe"><KeyRound className="h-4 w-4" /></button>
                     {u.id !== me.id && <button onClick={() => remove(u)} className="btn-ghost btn-sm text-red-500 hover:bg-red-50" title="Supprimer"><Trash2 className="h-4 w-4" /></button>}
                   </div>
                 </td>
@@ -168,15 +173,13 @@ export default function Users({ fixedRole = '' }) {
         </table>
       </div>
 
-      {modal && <UserModal user={modal === 'new' ? null : modal} defaultRole={fixedRole} companies={companies} isSelf={modal?.id === me.id} onClose={() => setModal(null)} onSaved={load} onCredentials={setCredentials} />}
-      <Modal open={!!credentials} onClose={() => setCredentials(null)} title="Identifiants" size="sm">
-        {credentials && <CredentialBox email={credentials.email} password={credentials.password} />}
-      </Modal>
+      {statusError && <p className="text-xs text-slate-500">Statuts des comptes indisponibles : {statusError}</p>}
+      {modal && <UserModal user={modal === 'new' ? null : modal} defaultRole={fixedRole} companies={companies} isSelf={modal?.id === me.id} onClose={() => setModal(null)} onSaved={() => { load(); reloadStatuses(); }} />}
     </div>
   );
 }
 
-function UserModal({ user, defaultRole, companies, isSelf, onClose, onSaved, onCredentials }) {
+function UserModal({ user, defaultRole, companies, isSelf, onClose, onSaved }) {
   const isNew = !user;
   const [form, setForm] = useState({
     full_name: user?.full_name || '',
@@ -184,7 +187,6 @@ function UserModal({ user, defaultRole, companies, isSelf, onClose, onSaved, onC
     job_title: user?.job_title || '',
     role: user?.role || defaultRole || 'learner',
     company_id: user?.company_id || companies[0]?.id || '',
-    password: '',
     is_active: user?.is_active ?? true,
   });
   const [saving, setSaving] = useState(false);
@@ -197,10 +199,8 @@ function UserModal({ user, defaultRole, companies, isSelf, onClose, onSaved, onC
       const body = { ...form, company_id: form.role === 'admin' ? null : form.company_id };
       if (isNew) {
         const res = await api('/users', { method: 'POST', body });
-        toast.success('Compte créé');
-        onCredentials({ email: res.profile.email, password: res.temporary_password || form.password });
+        toast.success(`Invitation envoyée à ${res.profile.email}. La personne choisira son mot de passe en ouvrant le lien.`, { duration: 6000 });
       } else {
-        if (!body.password) delete body.password;
         if (isSelf) {
           delete body.role;
           delete body.is_active;
@@ -240,14 +240,12 @@ function UserModal({ user, defaultRole, companies, isSelf, onClose, onSaved, onC
             </Field>
           )}
           <Field label="Poste / fonction"><input className="input" value={form.job_title} onChange={(e) => set('job_title', e.target.value)} /></Field>
-          <Field label={isNew ? 'Mot de passe' : 'Nouveau mot de passe'} hint={isNew ? 'Vide = généré automatiquement' : 'Laisser vide pour ne pas changer'}>
-            <input className="input" minLength={8} value={form.password} onChange={(e) => set('password', e.target.value)} />
-          </Field>
         </div>
+        {isNew && <p className="rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900">Un e-mail d’invitation sera envoyé à cette adresse. La personne confirmera son adresse et choisira elle-même son mot de passe.</p>}
         {!isNew && !isSelf && <Toggle checked={form.is_active} onChange={(v) => set('is_active', v)} label={form.is_active ? 'Compte actif' : 'Compte désactivé'} />}
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="btn-ghost">Annuler</button>
-          <button className="btn-primary" disabled={saving}>{saving ? <Spinner className="text-white" /> : 'Enregistrer'}</button>
+          <button className="btn-primary" disabled={saving}>{saving ? <Spinner className="text-white" /> : isNew ? 'Envoyer l’invitation' : 'Enregistrer'}</button>
         </div>
       </form>
     </Modal>

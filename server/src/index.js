@@ -44,7 +44,9 @@ app.use('/api', (_req, res) => res.status(404).json({ error: 'Route introuvable.
 app.use((err, _req, res, _next) => {
   const status = err.status || 500;
   if (status >= 500) console.error(err);
-  res.status(status).json({ error: err.message || 'Erreur serveur.' });
+  // En production, les erreurs internes (500) ne détaillent pas la cause au navigateur.
+  const hide = status === 500 && process.env.NODE_ENV === 'production';
+  res.status(status).json({ error: hide ? 'Erreur serveur. Réessayez ou contactez MCE Academy.' : (err.message || 'Erreur serveur.') });
 });
 
 app.listen(PORT, () => {

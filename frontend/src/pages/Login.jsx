@@ -1,24 +1,44 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Eye, EyeOff, Lock, Mail, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Logo from '../components/layout/Logo';
 import { Spinner } from '../components/ui';
 import { useAuth, homePathForRole } from '../contexts/AuthContext';
 import { db } from '../lib/db';
 import { BRAND } from '../config';
+import { confirmRedirect, linkErrorMessage, RESEND_DELAY } from '../lib/authLinks';
 
 export default function Login() {
   const { signIn, session, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const created = location.state?.created; // arrivée depuis l'inscription
-  const [email, setEmail] = useState(created?.email || '');
+  const [email, setEmail] = useState(created?.email || location.state?.pendingEmail || '');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [forgot, setForgot] = useState(false);
+  const [notConfirmed, setNotConfirmed] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  // Retour depuis un lien e-mail : adresse confirmée, ou lien invalide / expiré.
+  const [confirmed] = useState(() => new URLSearchParams(location.search).get('confirme') === '1');
+  const [linkError] = useState(() => linkErrorMessage(window.location));
+
+  useEffect(() => {
+    if (!cooldown) return undefined;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  const resend = async () => {
+    if (!email.trim() || cooldown) return;
+    const { error: err } = await db.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: confirmRedirect() } });
+    setCooldown(RESEND_DELAY);
+    if (err) return toast.error(/rate|seconds/i.test(err.message) ? 'Patientez un peu avant de redemander un lien.' : err.message);
+    toast.success('Nouveau lien de confirmation envoyé.');
+  };
 
   useEffect(() => {
     if (session && profile) {
@@ -30,6 +50,7 @@ export default function Login() {
   const submit = async (e) => {
     e.preventDefault();
     setError('');
+    setNotConfirmed(false);
     setLoading(true);
     try {
       if (forgot) {
@@ -37,13 +58,15 @@ export default function Login() {
           redirectTo: `${window.location.origin}/reinitialiser`,
         });
         if (err) throw err;
-        toast.success('Email de réinitialisation envoyé.');
+        // Message neutre : on ne révèle pas si un compte existe pour cette adresse.
+        toast.success('Si un compte existe pour cette adresse, un e-mail de réinitialisation vient d’être envoyé.');
         setForgot(false);
       } else {
         await signIn(email, password);
       }
     } catch (err) {
       setError(err.message);
+      if (err.code === 'email_not_confirmed') setNotConfirmed(true);
     } finally {
       setLoading(false);
     }
@@ -61,6 +84,18 @@ export default function Login() {
             {forgot ? 'Recevez un lien pour choisir un nouveau mot de passe.' : 'Connectez-vous à votre espace de formation.'}
           </p>
 
+          {confirmed && !forgot && (
+            <div role="status" className="mt-6 flex gap-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800 ring-1 ring-emerald-200">
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
+              <p><b>Adresse e-mail confirmée.</b> Connectez-vous pour accéder à votre espace.</p>
+            </div>
+          )}
+          {linkError && !forgot && (
+            <div role="alert" className="mt-6 flex gap-3 rounded-2xl bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-200">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />
+              <p><b>{linkError}</b> Saisissez votre adresse puis connectez-vous : vous pourrez demander un nouveau lien.</p>
+            </div>
+          )}
           {created && !forgot && (
             <div className="mt-6 flex gap-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800 ring-1 ring-emerald-200">
               <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
@@ -98,7 +133,16 @@ export default function Login() {
               </div>
             )}
 
-            {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+            {error && (
+              <div role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                <p>{error}</p>
+                {notConfirmed && (
+                  <button type="button" onClick={resend} disabled={!!cooldown} className="mt-2 font-semibold text-brand-700 underline underline-offset-2 disabled:text-slate-400 disabled:no-underline">
+                    {cooldown ? `Nouveau lien possible dans ${cooldown} s` : 'Renvoyer le lien de confirmation'}
+                  </button>
+                )}
+              </div>
+            )}
 
             <button type="submit" disabled={loading} className="public-button public-auth-submit">
               {loading ? <Spinner className="text-white" /> : forgot ? 'Envoyer le lien' : 'Se connecter'}

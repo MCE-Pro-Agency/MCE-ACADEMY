@@ -42,6 +42,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/inscription" element={<Signup />} />
       <Route path="/reinitialiser" element={<ResetPassword />} />
+      <Route path="/activer" element={<ResetPassword mode="activation" />} />
 
       {/* Espace apprenant : test de profil professionnel uniquement.
           Les formations, modules, programme et exercices sont dÃ©veloppÃ©s dans l'espace Formateur

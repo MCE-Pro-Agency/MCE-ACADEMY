@@ -5,7 +5,7 @@ import { Building2, Plus, Search, ArrowRight, Pencil, Trash2, Users, GraduationC
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/db';
 import { api } from '../../lib/api';
-import { Badge, CredentialBox, EmptyState, Field, Modal, PageLoader, Spinner } from '../../components/ui';
+import { Badge, EmptyState, Field, Modal, PageLoader, Spinner } from '../../components/ui';
 import { timeAgo } from '../../lib/utils';
 
 export default function Companies() {
@@ -120,7 +120,7 @@ function CompanyModal({ company, onClose, onSaved }) {
     max_learners: company?.max_learners || '',
     join_code: company?.join_code || '',
   });
-  const [trainer, setTrainer] = useState({ full_name: '', email: '', password: '' });
+  const [trainer, setTrainer] = useState({ full_name: '', email: '' });
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -136,7 +136,7 @@ function CompanyModal({ company, onClose, onSaved }) {
         toast.success('Entreprise créée');
         onSaved();
         if (res.trainer?.error) toast.error(`Formateur : ${res.trainer.error}`);
-        if (res.trainer?.profile) setResult({ email: res.trainer.profile.email, password: res.trainer.temporary_password || trainer.password });
+        if (res.trainer?.profile) setResult({ email: res.trainer.profile.email });
         else onClose();
       } else {
         if (!/^[A-Z0-9_-]{6,32}$/.test(form.join_code.trim().toUpperCase())) throw new Error('Le code doit contenir 6 à 32 caractères (lettres, chiffres, _ ou -).');
@@ -157,8 +157,8 @@ function CompanyModal({ company, onClose, onSaved }) {
     <Modal open onClose={onClose} title={isNew ? 'Nouvelle entreprise' : `Modifier ${company.name}`}>
       {result ? (
         <div className="space-y-4">
-          <p className="text-sm text-navy-800">L’espace et le compte formateur sont prêts.</p>
-          <CredentialBox email={result.email} password={result.password} />
+          <p className="text-sm text-navy-800">L’espace de l’entreprise est prêt.</p>
+          <p className="rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900">Une invitation a été envoyée à <b>{result.email}</b>. Le formateur confirmera son adresse et choisira lui-même son mot de passe en ouvrant le lien.</p>
           <div className="flex justify-end"><button className="btn-primary" onClick={onClose}>Terminer</button></div>
         </div>
       ) : (
@@ -168,7 +168,7 @@ function CompanyModal({ company, onClose, onSaved }) {
             <Field label="Secteur"><input className="input" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} /></Field>
             <Field label="Nombre max. d’apprenants"><input type="number" min={0} className="input" value={form.max_learners} onChange={(e) => setForm({ ...form, max_learners: e.target.value })} /></Field>
           </div>
-          {!isNew && <Field label="Code unique d’inscription"><input className="input font-mono" maxLength={32} value={form.join_code} onChange={e=>setForm({...form,join_code:e.target.value.toUpperCase()})}/></Field>}
+          {!isNew && <Field label="Code unique d’inscription" hint="10 caractères ou plus, difficile à deviner"><input className="input font-mono" minLength={10} maxLength={32} value={form.join_code} onChange={e=>setForm({...form,join_code:e.target.value.toUpperCase()})}/></Field>}
           <Field label="Email de contact"><input type="email" className="input" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} /></Field>
 
           {isNew && (
@@ -177,7 +177,7 @@ function CompanyModal({ company, onClose, onSaved }) {
               <div className="grid gap-3 sm:grid-cols-2">
                 <input className="input" placeholder="Nom complet" value={trainer.full_name} onChange={(e) => setTrainer({ ...trainer, full_name: e.target.value })} />
                 <input type="email" className="input" placeholder="Email" value={trainer.email} onChange={(e) => setTrainer({ ...trainer, email: e.target.value })} />
-                <input className="input sm:col-span-2" placeholder="Mot de passe (vide = généré)" value={trainer.password} onChange={(e) => setTrainer({ ...trainer, password: e.target.value })} />
+                <p className="text-xs text-slate-500 sm:col-span-2">Le formateur recevra une invitation par e-mail pour activer son compte.</p>
               </div>
             </div>
           )}

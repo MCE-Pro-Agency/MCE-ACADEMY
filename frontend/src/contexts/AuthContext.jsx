@@ -270,6 +270,13 @@ export function AuthProvider({ children }) {
         );
       }
 
+      // Adresse pas encore confirmée : la page de connexion propose de renvoyer le lien.
+      if (error.code === 'email_not_confirmed' || /not confirmed/i.test(error.message)) {
+        const notConfirmed = new Error('Votre adresse e-mail n’est pas encore confirmée. Cliquez sur le lien reçu par e-mail, ou demandez-en un nouveau ci-dessous.');
+        notConfirmed.code = 'email_not_confirmed';
+        throw notConfirmed;
+      }
+
       throw error;
     }
   };

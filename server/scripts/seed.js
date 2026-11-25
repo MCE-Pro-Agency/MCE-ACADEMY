@@ -23,7 +23,8 @@ async function ensureAccount(input) {
     log(`Compte déjà présent : ${input.email}`);
     return existing;
   }
-  const { profile } = await createAccount(input);
+  // Script interne : comptes créés avec le mot de passe fourni, sans e-mail d'invitation.
+  const { profile } = await createAccount({ ...input, invite: false });
   log(`Compte créé : ${input.email} (${input.role})`);
   return profile;
 }

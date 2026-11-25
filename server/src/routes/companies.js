@@ -28,14 +28,15 @@ router.post(
     let trainerResult = null;
     if (trainer?.email) {
       try {
-        const { profile, password } = await createAccount({
+        // Le formateur reçoit une invitation par e-mail et choisit lui-même son mot de passe.
+        const { profile, invited } = await createAccount({
           email: trainer.email,
-          password: trainer.password,
           full_name: trainer.full_name,
           role: 'trainer',
           company_id: company.id,
+          invite: true,
         });
-        trainerResult = { profile, temporary_password: password };
+        trainerResult = { profile, invited };
       } catch (e) {
         trainerResult = { error: e.message };
       }

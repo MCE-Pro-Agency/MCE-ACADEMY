@@ -39,9 +39,21 @@ export function requireRole(...roles) {
   };
 }
 
-/** Admin : toutes les entreprises. Formateur : uniquement la sienne. */
-export function canManageCompany(profile, companyId) {
-  if (!profile) return false;
+/**
+ * Admin : toutes les entreprises.
+ * Formateur : son entreprise principale + celles qui lui sont attribuées (table trainer_companies),
+ * comme la fonction SQL public.is_trainer_of utilisée par les règles RLS.
+ */
+export async function canManageCompany(profile, companyId) {
+  if (!profile || !companyId) return profile?.role === 'admin';
   if (profile.role === 'admin') return true;
-  return profile.role === 'trainer' && profile.company_id === companyId;
+  if (profile.role !== 'trainer' || !profile.is_active) return false;
+  if (profile.company_id === companyId) return true;
+  const { data, error } = await supabaseAdmin
+    .from('trainer_companies')
+    .select('company_id')
+    .eq('trainer_id', profile.id)
+    .eq('company_id', companyId)
+    .maybeSingle();
+  return !error && !!data;
 }
