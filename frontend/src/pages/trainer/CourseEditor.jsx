@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+import RichEditor from '../../components/RichEditor';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -11,6 +13,7 @@ import { Avatar, Badge, Field, Markdown, Modal, PageLoader, Spinner, Tabs, Toggl
 import { CourseCover } from '../../components/CourseCard';
 import { cn, LESSON_TYPES, LEVEL_LABELS } from '../../lib/utils';
 import { moduleStore, MODULE_MODES, useLocalStoreVersion } from '../../lib/stores';
+import { moduleTitle, scheduleLabel } from '../../lib/moduleSchedule';
 import ModuleJourney from '../../components/ModuleJourney';
 
 /* Réglage du déblocage d'un module (table module_settings) */
@@ -188,7 +191,7 @@ function ContentTab({ course, modules, reload, onEditLesson }) {
   const journey = modules.map((m, i) => {
     const st = moduleStore.get(m.id);
     const reason = st.requiresProfile ? 'Après le test de profil' : st.mode === 'closed' ? 'Fermé' : st.mode === 'date' ? (st.opensAt ? `Le ${new Date(st.opensAt).toLocaleDateString('fr-FR')}` : 'Date à définir') : st.mode === 'sequential' ? 'Après le module précédent' : null;
-    return { title: m.title, pct: 0, reason, state: st.mode === 'open' && !st.requiresProfile ? 'open' : 'locked' };
+    return { title: `${moduleTitle(m.title)} · ${scheduleLabel(m.scheduled_date)}`, pct: 0, reason, state: st.mode === 'open' && !st.requiresProfile ? 'open' : 'locked' };
   });
 
   return (
@@ -224,6 +227,7 @@ function ContentTab({ course, modules, reload, onEditLesson }) {
             </div>
           </div>
 
+          <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-brand-700 capitalize">Séance : {scheduleLabel(m.scheduled_date)}</div>
           <ModuleUnlock module={m} index={mi} />
           <ul className="divide-y divide-slate-100">
             {m.lessons.map((l, li) => {
@@ -260,11 +264,11 @@ function ContentTab({ course, modules, reload, onEditLesson }) {
 }
 
 /* ================= LEÇON ================= */
-function LessonModal({ moduleId, lesson, courseId, position, onClose, onSaved }) {
+export function LessonModal({ moduleId, lesson, courseId, position, onClose, onSaved, initialType = 'text' }) {
   const isNew = !lesson;
   const [form, setForm] = useState({
     title: lesson?.title || '',
-    type: lesson?.type || 'text',
+    type: lesson?.type || initialType,
     duration_minutes: lesson?.duration_minutes ?? 5,
     passing_score: lesson?.passing_score ?? 70,
     content: lesson?.content || '',
@@ -274,6 +278,7 @@ function LessonModal({ moduleId, lesson, courseId, position, onClose, onSaved })
   const [questions, setQuestions] = useState([]);
   const [removedIds, setRemovedIds] = useState([]);
   const [preview, setPreview] = useState(false);
+  const [workspace, setWorkspace] = useState('write');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -313,11 +318,11 @@ function LessonModal({ moduleId, lesson, courseId, position, onClose, onSaved })
   };
 
   const save = async () => {
-    if (!form.title.trim()) return toast.error('Le titre est requis.');
+    if (!form.title.trim()) { setWorkspace('write'); return toast.error('Le titre est requis.'); }
     if (form.type === 'quiz') {
       for (const [i, q] of questions.entries()) {
-        if (!q.question.trim()) return toast.error(`Question ${i + 1} : texte manquant.`);
-        if (q.options.filter((o) => o.trim()).length < 2) return toast.error(`Question ${i + 1} : au moins 2 réponses.`);
+        if (!q.question.trim()) { setWorkspace('questions'); return toast.error(`Question ${i + 1} : texte manquant.`); }
+        if (q.options.filter((o) => o.trim()).length < 2) { setWorkspace('questions'); return toast.error(`Question ${i + 1} : au moins 2 réponses.`); }
       }
     }
     setSaving(true);
@@ -360,20 +365,37 @@ function LessonModal({ moduleId, lesson, courseId, position, onClose, onSaved })
     }
   };
 
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      size="xl"
-      title={isNew ? 'Nouvelle leçon' : 'Modifier la leçon'}
-      footer={
-        <>
-          <button onClick={onClose} className="btn-ghost">Annuler</button>
-          <button onClick={save} disabled={saving || uploading} className="btn-primary">{saving ? <Spinner className="text-white" /> : <><Save className="h-4 w-4" /> Enregistrer</>}</button>
-        </>
-      }
-    >
-      <div className="space-y-5">
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, []);
+  const leave = () => {
+    if (saving || uploading) return;
+    if (window.confirm('Quitter la rédaction ? Les changements non enregistrés seront perdus.')) onClose();
+  };
+  return createPortal(
+    <div className="mce-lesson-workspace" role="dialog" aria-modal="true" aria-label={isNew ? 'Nouvelle leçon' : 'Modifier la leçon'}>
+      <header className="mce-lesson-header">
+        <div className="mce-lesson-topline">
+          <button type="button" onClick={leave} disabled={saving || uploading} className="btn-ghost !text-white"><ArrowLeft className="h-4 w-4"/> Retour</button>
+          <input aria-label="Titre de la leçon" placeholder="Titre de la leçon *" className="mce-lesson-title" value={form.title} onChange={e=>set('title',e.target.value)}/>
+          <button type="button" onClick={save} disabled={saving || uploading} className="btn-brand">{saving ? <Spinner className="text-white"/> : <><Save className="h-4 w-4"/> Enregistrer</>}</button>
+        </div>
+      </header>
+      <nav className="mce-lesson-nav" aria-label="Sections de rédaction">
+        {[['write','Rédaction'],['settings','Paramètres'],...(form.type==='quiz'?[['questions',`Questions (${questions.length})`]]:[])].map(([id,label])=><button key={id} type="button" aria-pressed={workspace===id} className={workspace===id?'btn-primary btn-sm':'btn-secondary btn-sm'} onClick={()=>setWorkspace(id)}>{label}</button>)}
+        <span className="ml-auto self-center whitespace-nowrap text-xs text-slate-500">{LESSON_TYPES[form.type]?.label}</span>{workspace==='write'&&<button type="button" onClick={()=>setPreview(p=>!p)} className="btn-ghost btn-sm">{preview?'Éditer':'Aperçu'}</button>}
+      </nav>
+      <main className="mce-lesson-main">
+        <div className={workspace==='write'?'mce-lesson-write':'hidden'}>
+        <div className="mce-lesson-document">
+          {preview && <div className="mce-lesson-preview"><Markdown>{form.content}</Markdown></div>}
+          <div className={preview ? 'hidden' : 'mce-lesson-editor-slot'}><RichEditor fullPage value={form.content} onChange={v => set('content', v)} /></div>
+        </div>
+
+        </div>
+        <div className={workspace==='settings'?'mce-lesson-panel':'hidden'}>
         <div>
           <span className="label">Type de leçon</span>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -390,10 +412,7 @@ function LessonModal({ moduleId, lesson, courseId, position, onClose, onSaved })
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-4">
-          <Field label="Titre *" className="sm:col-span-3"><input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} /></Field>
-          <Field label="Durée (min)"><input type="number" min={0} className="input" value={form.duration_minutes} onChange={(e) => set('duration_minutes', e.target.value)} /></Field>
-        </div>
+        <Field label="Durée (min)"><input type="number" min={0} className="input sm:max-w-xs" value={form.duration_minutes} onChange={(e) => set('duration_minutes', e.target.value)} /></Field>
 
         {form.type === 'video' && (
           <Field label="Vidéo" hint="Lien YouTube, Vimeo ou fichier MP4 — ou envoyez un fichier.">
@@ -419,21 +438,9 @@ function LessonModal({ moduleId, lesson, courseId, position, onClose, onSaved })
           </Field>
         )}
 
-        <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <span className="label mb-0">
-              {form.type === 'exercise' ? 'Consigne de l’exercice' : form.type === 'quiz' ? 'Introduction (optionnel)' : 'Contenu'}{' '}
-              <span className="font-normal text-slate-400">(Markdown : # titre, **gras**, - liste, | tableau |)</span>
-            </span>
-            <button type="button" onClick={() => setPreview((p) => !p)} className="btn-ghost btn-sm">{preview ? 'Éditer' : 'Aperçu'}</button>
-          </div>
-          {preview ? (
-            <div className="min-h-[220px] rounded-xl bg-slate-50 p-5"><Markdown>{form.content}</Markdown></div>
-          ) : (
-            <textarea className="input min-h-[220px] font-mono text-[13px]" value={form.content} onChange={(e) => set('content', e.target.value)} />
-          )}
+          <button type="button" className="btn-primary" onClick={()=>setWorkspace('write')}>Revenir à la rédaction</button>
         </div>
-
+        <div className={workspace==='questions'?'mce-lesson-panel':'hidden'}>
         {form.type === 'quiz' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -447,7 +454,7 @@ function LessonModal({ moduleId, lesson, courseId, position, onClose, onSaved })
                   <input className="input" placeholder="Intitulé de la question" value={q.question} onChange={(e) => updateQ(i, { question: e.target.value })} />
                   <button type="button" onClick={() => removeQ(i)} className="btn-ghost btn-sm text-red-500"><Trash2 className="h-4 w-4" /></button>
                 </div>
-                <div className="mt-3 space-y-2 pl-6">
+                <div className="mt-3 space-y-2 sm:pl-6">
                   {q.options.map((opt, oi) => (
                     <div key={oi} className="flex items-center gap-2">
                       <input type="radio" name={`correct-${i}`} checked={q.correct === oi} onChange={() => updateQ(i, { correct: oi })} className="h-4 w-4 text-emerald-500 focus:ring-emerald-400" title="Bonne réponse" />
@@ -473,8 +480,9 @@ function LessonModal({ moduleId, lesson, courseId, position, onClose, onSaved })
             {questions.length === 0 && <p className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">Ajoutez votre première question.</p>}
           </div>
         )}
-      </div>
-    </Modal>
+        </div>
+      </main>
+    </div>, document.body
   );
 }
 
@@ -530,10 +538,10 @@ function InfoTab({ course, reload }) {
         </div>
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="label mb-0">Description (Markdown)</span>
+            <span className="label mb-0">Description de la formation</span>
             <button type="button" onClick={() => setPreview((p) => !p)} className="btn-ghost btn-sm">{preview ? 'Éditer' : 'Aperçu'}</button>
           </div>
-          {preview ? <div className="min-h-[200px] rounded-xl bg-slate-50 p-5"><Markdown>{form.description}</Markdown></div> : <textarea className="input min-h-[200px] font-mono text-[13px]" value={form.description} onChange={(e) => set('description', e.target.value)} />}
+          {preview ? <div className="min-h-[200px] rounded-xl bg-slate-50 p-5"><Markdown>{form.description}</Markdown></div> : <RichEditor value={form.description} onChange={v => set('description', v)} label="Description de la formation" />}
         </div>
       </div>
       <div className="space-y-4">

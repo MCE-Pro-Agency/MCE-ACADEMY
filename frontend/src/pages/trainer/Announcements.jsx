@@ -1,3 +1,6 @@
+import RichEditor from '../../components/RichEditor';
+import { Markdown } from '../../components/ui';
+import { isRich } from '../../lib/richContent';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Megaphone, Send, Trash2 } from 'lucide-react';
@@ -47,7 +50,7 @@ export default function Announcements() {
         <p className="page-subtitle">Communiquez avec tous les apprenants de l’entreprise.</p>
         <form onSubmit={publish} className="card mt-6 space-y-4 p-6">
           <Field label="Titre"><input required className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
-          <Field label="Message"><textarea className="input min-h-[140px]" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} /></Field>
+          <div><span className="label">Message</span><RichEditor plain value={form.body} onChange={body=>setForm(f=>({...f,body}))} label="Message de l’annonce" /></div>
           <button className="btn-primary w-full"><Send className="h-4 w-4" /> Publier</button>
         </form>
       </div>
@@ -64,7 +67,7 @@ export default function Announcements() {
                 </div>
                 <button onClick={() => remove(a.id)} className="btn-ghost btn-sm text-red-500"><Trash2 className="h-4 w-4" /></button>
               </div>
-              {a.body && <p className="mt-3 whitespace-pre-line text-sm text-slate-600">{a.body}</p>}
+              {a.body && <div className="mt-3 text-sm text-slate-600">{isRich(a.body)?<Markdown>{a.body}</Markdown>:<p className="whitespace-pre-line">{a.body}</p>}</div>}
             </article>
           ))
         )}

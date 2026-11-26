@@ -10,6 +10,7 @@ import { db } from '../../lib/db';
 import { fetchCourseTree } from '../../lib/queries';
 import { Avatar, EmptyState, PageLoader } from '../../components/ui';
 import { moduleStore, profilStore, lastRun, profilDone, useLocalStoreVersion } from '../../lib/stores';
+import { moduleTitle, scheduleLabel } from '../../lib/moduleSchedule';
 import { moduleMeta } from '../../data/programme';
 import { profilType } from '../../data/profilModel';
 import { cn, formatDate } from '../../lib/utils';
@@ -84,7 +85,7 @@ export default function Programme({ base = '/formateur' }) {
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-2xl">{nextClosed.meta.icon}</span>
           <div className="flex-1">
             <p className="text-xs font-bold uppercase tracking-widest text-brand-300">Prochain module à ouvrir</p>
-            <p className="text-lg font-bold">{nextClosed.m.title}</p>
+            <p className="text-lg font-bold">{moduleTitle(nextClosed.m.title)}</p>
             <p className="text-sm text-navy-200">{nextClosed.m.lessons.length} éléments · les apprenants y accèdent dès l’ouverture.</p>
           </div>
           <button onClick={() => setMode(nextClosed.m, { mode: 'open' }, `« ${nextClosed.m.title} » est ouvert aux apprenants`)} className="btn-brand px-6 py-3">
@@ -111,7 +112,7 @@ export default function Programme({ base = '/formateur' }) {
                     <span className="mt-0.5 text-[9px] font-bold">{i + 1}</span>
                   </span>
                   <div className="min-w-0">
-                    <p className="font-bold text-navy-900">{m.title}</p>
+                    <p className="font-bold text-navy-900">{moduleTitle(m.title)}</p><p className="text-xs font-semibold text-brand-700 capitalize">{scheduleLabel(m.scheduled_date)}</p>
                     <p className="text-xs text-slate-500">{count('text')} leçons · {count('exercise')} mission(s) · {count('quiz')} quiz · {completedBy(m.id)}/{learners.length} apprenant(s) ont terminé</p>
                   </div>
                 </div>
@@ -157,7 +158,7 @@ export default function Programme({ base = '/formateur' }) {
                   {mods.map(({ m, meta }) => (
                     <th key={m.id} className="px-1.5 py-3 text-center" title={m.title}>
                       <span className="block text-base">{meta.icon}</span>
-                      {meta.day || m.title.slice(0, 8)}
+                      {m.scheduled_date ? scheduleLabel(m.scheduled_date) : moduleTitle(m.title).slice(0, 18)}
                     </th>
                   ))}
                 </tr>

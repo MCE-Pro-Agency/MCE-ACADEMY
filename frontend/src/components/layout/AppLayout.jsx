@@ -17,7 +17,7 @@ import Logo from './Logo';
 function NavLink({ to, className, children, onClick, ...props }) {
   const { company, isLearner } = useAuth();
   const tab = typeof to === 'string' ? LEARNER_TABS.find(x => x.to === to) : null;
-  const locked = Boolean(isLearner && tab && !isTabOpen(company, tab.key));
+  const locked = Boolean(isLearner && tab && tab.key !== 'parcours' && !isTabOpen(company, tab.key));
   const styled = (state) => {
     const base = typeof className === 'function' ? className(state) : (className || '');
     return locked ? base + ' opacity-50 cursor-not-allowed' : base;
@@ -42,7 +42,7 @@ const NAV = {
   // Espace apprenant : le test de profil (toujours ouvert) + les onglets ouverts par le formateur
   learner: [
     { title: 'Mon espace', items: [{ to: '/app/mon-profil', label: 'Mon test de profil', icon: Brain }] },
-    { title: 'Ma formation', items: LEARNER_TABS.map(({ key, to, label, icon }) => ({ key, to, label, icon })) },
+    { title: 'Ma formation', items: LEARNER_TABS.map(({ key, to, label, icon }) => ({ key, to, label: key === 'parcours' ? 'Mes formations' : label, icon })) },
   ],
   trainer: [
     { title: 'Espace formateur', items: [
@@ -50,7 +50,8 @@ const NAV = {
       { to: '/formateur/cours', label: 'Mes formations', icon: GraduationCap },
       { to: '/formateur/exercices', label: 'Exercices & Evaluations', icon: ClipboardCheck },
       { to: '/formateur/apprenants', label: 'Mes apprenants', icon: Users },
-      { to: '/formateur/activites', label: 'Séances & activités', icon: CalendarClock },
+      // { to: '/formateur/activites', label: 'Séances & activités', icon: CalendarClock },
+      { to: '/formateur/performances', label: 'Performances', icon: LayoutDashboard },
       { to: '/formateur/rapports', label: 'Résultats & rapports', icon: Award },
       { to: '/formateur/acces', label: 'Gestion des accès', icon: LockKeyhole },
     ] },
@@ -128,7 +129,7 @@ export default function AppLayout({ area }) {
           <div key={group.title} className="pb-2">
             <p className="px-3.5 pb-1.5 pt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-navy-400">{group.title}</p>
             {group.items.map(({ key, to, label, icon: Icon, end }) => {
-              const locked = area === 'learner' && key && !isTabOpen(company, key);
+              const locked = area === 'learner' && key && key !== 'parcours' && !isTabOpen(company, key);
               return (
               <NavLink
                 key={to}

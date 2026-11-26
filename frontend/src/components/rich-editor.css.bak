@@ -1,0 +1,69 @@
+.mce-word{min-width:0;max-width:100%;border:1px solid #d5e0ec;border-radius:14px;overflow:hidden;background:#fff}
+.mce-word-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:8px;background:#f1f5f9;border-bottom:1px solid #d5e0ec}
+.mce-word-tool,.mce-word-toolbar select,.mce-word-color{min-height:40px;min-width:36px;max-width:100%;border:1px solid #d5e0ec;background:white;border-radius:7px;padding:5px 8px;font-size:12px;color:#183452;display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.mce-word-tool:hover,.mce-word-tool.is-active{background:#d4eefb;border-color:#4fb4e8}.mce-word-tool:disabled{opacity:.4}.mce-word-tool:focus-visible{outline:2px solid #2b9fdc}.mce-word-color input{width:25px;height:25px;padding:0;border:0}
+.mce-word-body{min-height:250px;max-width:100%;padding:20px;outline:none;overflow-wrap:anywhere;overflow-x:auto}.mce-word-body:focus{box-shadow:inset 0 0 0 2px #a9dcf6}.mce-word-body img,.mce-rich-content img{max-width:100%;height:auto}.mce-word-body table,.mce-rich-content table{border-collapse:collapse;min-width:100%;table-layout:fixed}.mce-word-body td,.mce-word-body th,.mce-rich-content td,.mce-rich-content th{border:1px solid #cbd5e1;min-width:50px;padding:8px}.mce-word-body .selectedCell{background:#d4eefb}.mce-word-body ul,.mce-rich-content ul{list-style:disc;padding-left:1.5rem}.mce-word-body ol,.mce-rich-content ol{list-style:decimal;padding-left:1.5rem}.mce-rich-content{min-width:0;max-width:100%;overflow-x:auto;overflow-wrap:anywhere}.mce-word-expanded .mce-word-body{min-height:60vh}
+@media(max-width:640px){.mce-word-toolbar{flex-wrap:nowrap;overflow-x:auto}.mce-word-tool,.mce-word-toolbar select,.mce-word-color{flex-shrink:0;min-height:44px}.mce-word-body{padding:12px;min-height:220px}.mce-word-expanded .mce-word-body{min-height:55vh}}
+
+/* Ruban persistant : seul le document défile pendant la rédaction. */
+.mce-word{overflow:visible}
+.mce-word-sticky{position:sticky;top:0;z-index:10;background:#fff;border-radius:13px 13px 0 0;box-shadow:0 3px 8px rgba(11,29,51,.08)}
+.mce-word-sticky>div:first-child{border-radius:13px 13px 0 0}
+.mce-word-body{max-height:clamp(250px,48vh,540px);overflow-y:auto;overscroll-behavior-y:contain;scroll-padding-block:16px}
+.mce-word-expanded .mce-word-body{min-height:0;height:60vh;max-height:60vh}
+@media(max-width:640px){
+ .mce-word-sticky{top:64px}
+ .fixed .mce-word-sticky{top:0}
+ .mce-word-body{min-height:140px;max-height:clamp(140px,40vh,360px);max-height:clamp(140px,40dvh,360px)}
+ .mce-word-expanded .mce-word-body{min-height:0;height:50vh;max-height:50vh;height:50dvh;max-height:50dvh}
+}
+@media(min-width:641px) and (max-width:1023px){.mce-word-sticky{top:64px}.fixed .mce-word-sticky{top:0}}
+
+/* Espace de rédaction plein écran : le ruban ne défile jamais avec le document. */
+.mce-lesson-workspace{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;height:100vh;height:100dvh;min-width:0;background:#eef3f8;overflow:hidden}
+.mce-lesson-header{flex:none;background:#0b1d33;color:white;padding:10px 20px;display:grid;gap:8px}
+.mce-lesson-title{width:100%;min-width:0;color:white;background:#183452;border:1px solid #4d7299;border-radius:10px;padding:10px 14px;font-size:18px;font-weight:600;outline:none}
+.mce-lesson-title::placeholder{color:#aabfd6}.mce-lesson-title:focus{border-color:#7bc8f0}
+.mce-lesson-nav{flex:none;display:flex;gap:8px;align-items:center;padding:8px 20px;background:white;border-bottom:1px solid #d5e0ec;overflow-x:auto}.mce-lesson-nav button{white-space:nowrap;min-height:40px;flex-shrink:0}
+.mce-lesson-main{flex:1;min-height:0;min-width:0;overflow:hidden;display:flex;flex-direction:column}
+.mce-lesson-write,.mce-lesson-document,.mce-lesson-editor-slot{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0}
+.mce-lesson-write{padding:10px 20px 14px}.mce-lesson-document>div:first-child{flex:none}.mce-lesson-editor-slot{overflow:hidden}
+.mce-lesson-panel,.mce-lesson-preview{overflow:auto;min-height:0;flex:1;width:100%;max-width:1120px;margin:0 auto;padding:20px;background:white;overscroll-behavior:contain}.mce-lesson-panel{display:grid;align-content:start;gap:20px}.mce-lesson-preview{border-radius:12px}
+.mce-word-full{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;border-radius:12px;background:#e7edf4}
+.mce-word-full .mce-word-sticky{position:relative;top:auto;flex:none;z-index:1;border-radius:0;box-shadow:0 2px 6px #0b1d3314}
+.mce-word-full .mce-word-sticky>div:first-child{border-radius:0}
+.mce-word-full .mce-word-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:20px;scroll-padding-block:20px}
+.mce-word-full .mce-word-body{width:100%;max-width:900px;min-height:100%;height:auto;max-height:none;overflow:visible;margin:0 auto;background:white;padding:clamp(20px,4vw,56px);box-shadow:0 2px 10px #0b1d3314;border-radius:3px}
+.mce-word-full>div:last-child{flex:none;background:white;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+.mce-word-full .tableWrapper{max-width:100%;overflow-x:auto}
+@media(max-width:640px){.mce-lesson-header{padding:6px 10px;gap:5px}.mce-lesson-header button{min-height:40px;padding:7px 10px}.mce-lesson-title{font-size:16px;padding:8px 10px}.mce-lesson-nav{padding:6px 8px;gap:5px}.mce-lesson-nav button{min-height:40px}.mce-lesson-write{padding:5px}.mce-lesson-panel,.mce-lesson-preview{padding:12px}.mce-word-full .mce-word-scroll{padding:0;background:white}.mce-word-full .mce-word-body{padding:14px;box-shadow:none;font-size:16px}.mce-word-full .mce-word-toolbar{flex-wrap:nowrap;overflow-x:auto}.mce-word-full .mce-word-sticky{top:auto}}
+
+/* Ruban compact, document prioritaire : surcharge de la disposition plein écran. */
+.mce-lesson-header{padding:6px 12px;gap:0;display:block}
+.mce-lesson-topline{display:flex;align-items:center;gap:10px;min-width:0}
+.mce-lesson-topline button{flex:none;min-height:36px;padding:6px 12px;font-size:13px;white-space:nowrap}
+.mce-lesson-title{flex:1;width:0;min-width:0;padding:6px 10px;font-size:15px;border-radius:6px}
+.mce-lesson-nav{padding:3px 12px;gap:4px;min-height:0;scrollbar-width:thin}
+.mce-lesson-nav button{min-height:32px;padding:4px 10px;font-size:12px}
+.mce-lesson-write{padding:0}
+.mce-word-full{border:0;border-radius:0;min-height:0}
+.mce-word-full .mce-word-sticky{box-shadow:0 1px 4px #0b1d3314}
+.mce-word-full .mce-word-sticky>.mce-word-toolbar{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:3px;padding:5px 10px;scrollbar-width:thin;border-radius:0}
+.mce-word-full .mce-word-toolbar>*{flex:none;white-space:nowrap}
+.mce-word-full .mce-word-tool,.mce-word-full .mce-word-toolbar select,.mce-word-full .mce-word-color{min-height:32px;min-width:30px;padding:3px 6px;border-radius:4px;font-size:12px}
+.mce-word-full .mce-word-toolbar select[aria-label="Police"]{width:120px}
+.mce-word-full .mce-word-toolbar select[aria-label="Style du paragraphe"]{width:85px}
+.mce-word-full .mce-word-color input{width:20px;height:20px}
+.mce-word-full .mce-word-scroll{flex:1 1 0;min-height:0;overflow:auto;padding:14px 18px 24px;scroll-padding-block:16px}
+.mce-word-full .mce-word-body{box-sizing:border-box;width:min(100%,760px);max-width:760px;min-height:max(100%, 850px);height:auto;max-height:none;margin:0 auto;padding:38px 48px;overflow:visible;background:#fff;font-size:15px;line-height:1.65;box-shadow:0 2px 9px #0b1d331a}
+.mce-word-full .mce-word-body> :first-child{margin-top:0}
+.mce-word-full .mce-word-body> :last-child{margin-bottom:0}
+.mce-word-full .mce-word-body p.is-editor-empty:first-child::before{content:'Commencez à rédiger…';color:#94a3b8;pointer-events:none;float:left;height:0}
+.mce-word-full>div:last-child{padding:3px 12px;font-size:11px}
+@media(max-width:640px){
+ .mce-lesson-header{padding:4px 6px}.mce-lesson-topline{gap:5px}.mce-lesson-topline button{min-height:40px;padding:5px 7px;font-size:12px}.mce-lesson-title{font-size:16px;padding:6px}
+ .mce-lesson-nav{padding:2px 5px}.mce-lesson-nav button{min-height:40px;padding:5px 8px}
+ .mce-word-full .mce-word-sticky>.mce-word-toolbar{display:flex;flex-wrap:nowrap;padding:4px 6px}
+ .mce-word-full .mce-word-tool,.mce-word-full .mce-word-toolbar select,.mce-word-full .mce-word-color{min-height:40px;min-width:36px}
+ .mce-word-full .mce-word-scroll{padding:0;background:#fff}.mce-word-full .mce-word-body{width:100%;min-height:100%;padding:18px 14px;font-size:16px;box-shadow:none}
+}

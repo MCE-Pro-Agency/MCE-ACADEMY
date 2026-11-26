@@ -1,3 +1,5 @@
+import { isRich, richHTML } from '../../lib/richContent';
+import '../rich-editor.css';
 import { useEffect } from 'react';
 import { X, Loader2, Inbox } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -220,7 +222,7 @@ export function Markdown({ children, className }) {
         className
       )}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{children || ''}</ReactMarkdown>
+      {isRich(children) ? <div className="mce-rich-content" dangerouslySetInnerHTML={{__html:richHTML(children)}} /> : <ReactMarkdown remarkPlugins={[remarkGfm]}>{children || ''}</ReactMarkdown>}
     </div>
   );
 }

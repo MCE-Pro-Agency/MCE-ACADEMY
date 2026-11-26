@@ -26,6 +26,7 @@ import TrainerProgramme from './pages/trainer/Programme';
 import TrainerDocuments from './pages/trainer/Documents';
 import TrainerExercises from './pages/trainer/Exercises';
 import TrainerActivities from './pages/trainer/Activities';
+import Performances from './pages/trainer/Performances';
 import TrainerReports from './pages/trainer/Reports';
 import AccessManagement from './pages/trainer/AccessManagement';
 
@@ -76,6 +77,7 @@ export default function App() {
           <Route path="/formateur/corrections" element={<Submissions />} />
           <Route path="/formateur/exercices" element={<TrainerExercises />} />
           <Route path="/formateur/activites" element={<TrainerActivities />} />
+          <Route path="/formateur/performances" element={<Performances />} />
           <Route path="/formateur/rapports" element={<TrainerReports />} />
           <Route path="/formateur/acces" element={<AccessManagement />} />
           <Route path="/formateur/profils" element={<ProfilsSuivi scope="trainer" />} />
