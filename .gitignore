@@ -5,3 +5,8 @@ dist/
 *.log
 .DS_Store
 server/uploads/
+
+# Sauvegardes locales
+backup-*/
+*.bak
+
