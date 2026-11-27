@@ -1,3 +1,4 @@
+import {useAdminConfirm} from '../../components/layout/AdminConfirm';
 /* Documents des apprenants (formateur / admin)
    - supports communs (diaporama, livret…) : mise à disposition ou retrait
    - documents personnels : e-book individuel, attestation, autre fichier par apprenant */
@@ -18,6 +19,7 @@ const KINDS = {
 };
 
 export default function TrainerDocuments() {
+  const ask=useAdminConfirm();
   const { activeCompanyId } = useAuth();
   const [docs, setDocs] = useState(null);
   const [learners, setLearners] = useState([]);
@@ -44,7 +46,7 @@ export default function TrainerDocuments() {
     load();
   };
   const remove = async (d) => {
-    if (!confirm(`Supprimer « ${d.title} » ?`)) return;
+    if (!await ask(`Supprimer « ${d.title} » ?`)) return;
     const { error } = await db.from('documents').delete().eq('id', d.id);
     if (error) return toast.error(error.message);
     load();

@@ -1,3 +1,5 @@
+import {useAdminConfirm} from '../../components/layout/AdminConfirm';
+import { useLocation as useWorkspaceLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import RichEditor from '../../components/RichEditor';
 import { useEffect, useState } from 'react';
@@ -39,6 +41,7 @@ function ModuleUnlock({ module, index }) {
 }
 
 export default function CourseEditor() {
+  const base = useWorkspaceLocation().pathname.startsWith('/admin/') ? '/admin' : '/formateur';
   const { courseId } = useParams();
   const [course, setCourse] = useState(null);
   const [modules, setModules] = useState([]);
@@ -64,7 +67,7 @@ export default function CourseEditor() {
 
   return (
     <div className="space-y-6">
-      <Link to="/formateur/cours" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-navy-800">
+      <Link to={`${base}/cours`} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-navy-800">
         <ArrowLeft className="h-4 w-4" /> Cours & modules
       </Link>
 
@@ -123,6 +126,7 @@ export default function CourseEditor() {
 
 /* ================= CONTENU ================= */
 function ContentTab({ course, modules, reload, onEditLesson }) {
+  const ask=useAdminConfirm();
   useLocalStoreVersion({ refresh: true });
   const addModule = async () => {
     const { error } = await db.from('modules').insert({ course_id: course.id, title: `Module ${modules.length + 1}`, position: modules.length });
@@ -146,7 +150,7 @@ function ContentTab({ course, modules, reload, onEditLesson }) {
       if (pe || ce || ae) return toast.error('Vérification des résultats impossible : suppression annulée.');
       if (progress || copies || attempts) return toast.error('Ce module contient des résultats apprenants : suppression bloquée.');
     }
-    if (!confirm(`Supprimer définitivement le module « ${m.title} » et ses ${ids.length} leçons ?`)) return;
+    if (!await ask(`Supprimer définitivement le module « ${m.title} » et ses ${ids.length} leçons ?`)) return;
     const { error } = await db.from('modules').delete().eq('id', m.id);
     if (error) return toast.error(error.message);
     reload();
@@ -182,7 +186,7 @@ function ContentTab({ course, modules, reload, onEditLesson }) {
     ]);
     if (pe || ce || ae) return toast.error('Vérification des résultats impossible : suppression annulée.');
     if (progress || copies || attempts) return toast.error('Cette leçon a des réponses ou de la progression : suppression bloquée.');
-    if (!confirm(`Supprimer définitivement la leçon « ${l.title} » ?`)) return;
+    if (!await ask(`Supprimer définitivement la leçon « ${l.title} » ?`)) return;
     const { error } = await db.from('lessons').delete().eq('id', l.id);
     if (error) return toast.error(error.message);
     reload();
@@ -265,6 +269,7 @@ function ContentTab({ course, modules, reload, onEditLesson }) {
 
 /* ================= LEÇON ================= */
 export function LessonModal({ moduleId, lesson, courseId, position, onClose, onSaved, initialType = 'text' }) {
+  const ask=useAdminConfirm();
   const isNew = !lesson;
   const [form, setForm] = useState({
     title: lesson?.title || '',
@@ -370,9 +375,9 @@ export function LessonModal({ moduleId, lesson, courseId, position, onClose, onS
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = previous; };
   }, []);
-  const leave = () => {
+  const leave = async () => {
     if (saving || uploading) return;
-    if (window.confirm('Quitter la rédaction ? Les changements non enregistrés seront perdus.')) onClose();
+    if (await ask('Quitter la rédaction ? Les changements non enregistrés seront perdus.')) onClose();
   };
   return createPortal(
     <div className="mce-lesson-workspace" role="dialog" aria-modal="true" aria-label={isNew ? 'Nouvelle leçon' : 'Modifier la leçon'}>

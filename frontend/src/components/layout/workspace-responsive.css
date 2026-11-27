@@ -1,0 +1,48 @@
+/* Corrections limitées aux espaces internes ; les tableaux restent défilables. */
+.mce-workspace-trainer .mce-workspace-main,.mce-workspace-admin .mce-workspace-main {min-width:0;overflow-wrap:anywhere}
+.mce-workspace-trainer .mce-workspace-main :where(.grid,.flex,.card,.recharts-responsive-container),.mce-workspace-admin .mce-workspace-main :where(.grid,.flex,.card){min-width:0}
+.mce-workspace-trainer .mce-workspace-main :where(.overflow-x-auto,.scroll-thin),.mce-workspace-admin .mce-workspace-main .overflow-x-auto{max-width:100%}
+@media(max-width:639px){
+.mce-workspace-trainer .mce-workspace-main :where(h1,.page-title),.mce-workspace-admin .mce-workspace-main :where(h1,.page-title){font-size:clamp(1.35rem,6vw,1.8rem);line-height:1.2}
+.mce-workspace-trainer .mce-workspace-main :where(.btn-primary,.btn-secondary,.btn-brand,.btn-ghost),.mce-workspace-admin .mce-workspace-main :where(.btn-primary,.btn-secondary,.btn-brand,.btn-ghost){min-height:40px;max-width:100%;white-space:normal}
+.mce-workspace-trainer .mce-workspace-main :where(input,select,textarea),.mce-workspace-admin .mce-workspace-main :where(input,select,textarea){max-width:100%;min-width:0}
+.mce-workspace-trainer .mce-workspace-main :where(.card){max-width:100%}
+.mce-workspace-trainer .mce-workspace-main :where(.recharts-wrapper,canvas,img,video,iframe){max-width:100%}
+.mce-workspace-trainer .mce-workspace-main :where(.grid-cols-3,.grid-cols-4,.grid-cols-5,.grid-cols-6){grid-template-columns:repeat(2,minmax(0,1fr))}
+.mce-workspace-trainer .mce-workspace-main :where(.flex.justify-between){flex-wrap:wrap}
+.mce-workspace-trainer .mce-workspace-main :where(.card.p-6,.card.p-8){padding:1rem}
+.mce-workspace-trainer .mce-workspace-main :where(.mce-word-toolbar){overflow-x:auto;flex-wrap:nowrap}
+}
+
+/* ADMIN V3 — scoped mobile and premium design */
+.mce-workspace-admin{background:#f2f6fb;min-width:0}
+.mce-workspace-admin .mce-workspace-main{width:100%;max-width:1440px;min-width:0}
+.mce-workspace-admin .card{border-radius:20px;box-shadow:0 8px 24px #1737590b;min-width:0;max-width:100%}
+.admin-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;background:radial-gradient(ellipse at 90% 20%,#168bc5 0,transparent 55%),linear-gradient(125deg,#0b1d33,#153f65);color:white;padding:clamp(20px,4vw,38px);border-radius:26px;overflow:hidden;box-shadow:0 12px 30px #0b1d3320}
+.admin-hero-art{display:flex;align-items:center;gap:15px;color:#bdeaff;opacity:.65;padding:20px}
+.admin-hero-link{display:inline-flex;align-items:center;border:1px solid #ffffff55;border-radius:12px;padding:10px 15px;color:white;font-weight:600;font-size:14px;background:#ffffff12}
+.admin-context{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:white;border:1px solid #dce6f0;border-radius:18px;padding:16px;color:#183452}
+.admin-context label{width:min(100%,320px)}
+.admin-subnav{display:flex;gap:6px;flex-wrap:wrap;padding:7px;border:1px solid #dce6f0;background:white;border-radius:15px}
+.admin-subnav a{padding:10px 14px;border-radius:10px;color:#475569;font-size:14px;font-weight:700;min-height:44px;display:flex;align-items:center}
+.admin-subnav a.is-active{background:#123c63;color:white}
+.mce-workspace-admin .admin-page-title{font-weight:800;color:#102941;letter-spacing:-.035em}
+.mce-workspace-admin :where(.grid)>*{min-width:0}
+.mce-workspace-admin :where(.overflow-x-auto,.scroll-thin){max-width:100%;overscroll-behavior-x:contain}
+.mce-workspace-admin :where(img,video,iframe,canvas,.recharts-wrapper){max-width:100%}
+.mce-workspace-admin :where(input,select,textarea){max-width:100%}
+@media(max-width:767px){
+ .admin-hero-art{display:none}.admin-hero{border-radius:20px}.admin-context{align-items:stretch}.admin-context label{width:100%}
+ .mce-workspace-admin .mce-workspace-main{padding:12px;overflow-wrap:anywhere}
+ .mce-workspace-admin .mce-workspace-main :where(.flex.justify-between,.flex.items-end){flex-wrap:wrap}
+ .mce-workspace-admin .mce-workspace-main :where(.min-w-64,.min-w-56,.min-w-48,.min-w-40){min-width:0;width:100%}
+ .mce-workspace-admin .mce-workspace-main :where(.card.p-6,.card.p-8){padding:16px}
+ .mce-workspace-admin .mce-workspace-main :where(.grid-cols-4,.grid-cols-5,.grid-cols-6){grid-template-columns:repeat(2,minmax(0,1fr))}
+ .mce-workspace-admin .mce-workspace-main :where(.btn,.btn-primary,.btn-secondary,.btn-brand,.btn-ghost){min-height:44px;white-space:normal;max-width:100%}
+ .mce-workspace-admin .mce-workspace-main :where(input:not([type=checkbox]):not([type=radio]),select,textarea){font-size:16px;min-width:0}
+ .mce-workspace-admin .mce-workspace-main :where(.fixed.inset-0.z-50)>div.relative{max-height:92dvh;min-width:0}
+ .mce-workspace-admin .mce-workspace-main :where(.fixed.inset-0.z-50) .flex.justify-end{flex-wrap:wrap}
+ .mce-workspace-admin .mce-workspace-main .mce-word-toolbar{overflow-x:auto;flex-wrap:nowrap}
+ .admin-subnav{flex-wrap:nowrap;overflow-x:auto}.admin-subnav a{flex-shrink:0;white-space:nowrap}
+}
+@media(max-width:380px){.mce-workspace-admin .mce-workspace-main :where(.grid-cols-3){grid-template-columns:repeat(2,minmax(0,1fr))}}

@@ -1,3 +1,4 @@
+import {useAdminConfirm} from '../../components/layout/AdminConfirm';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -15,6 +16,7 @@ import { Avatar, Badge, PageLoader, ProgressBar, StatCard, Tabs } from '../../co
 import { formatDate, formatDateTime, formatDuration, scoreColor, timeAgo } from '../../lib/utils';
 
 export default function LearnerDetail({ base = '/formateur' }) {
+  const ask=useAdminConfirm();
   const { userId } = useParams();
   useLocalStoreVersion({ refresh: true });
   const [data, setData] = useState(null);
@@ -108,7 +110,7 @@ export default function LearnerDetail({ base = '/formateur' }) {
     load();
   };
   const unenroll = async (courseId) => {
-    if (!confirm('Désinscrire cet apprenant de ce cours ? Sa progression est conservée.')) return;
+    if (!await ask('Désinscrire cet apprenant de ce cours ? Sa progression est conservée.')) return;
     const { error } = await db.from('enrollments').delete().eq('user_id', userId).eq('course_id', courseId);
     if (error) return toast.error(error.message);
     load();
@@ -116,7 +118,7 @@ export default function LearnerDetail({ base = '/formateur' }) {
 
   return (
     <div className="space-y-6">
-      <Link to={`${base}/apprenants`} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-navy-800">
+      <Link to={base === '/admin' ? '/admin/utilisateurs?role=learner' : `${base}/apprenants`} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-navy-800">
         <ArrowLeft className="h-4 w-4" /> Apprenants
       </Link>
 
@@ -229,7 +231,7 @@ export default function LearnerDetail({ base = '/formateur' }) {
             </ul>
             {submissions.some((s) => s.status === 'submitted') && (
               <div className="border-t border-slate-100 p-4 text-right">
-                <Link to="/formateur/corrections" className="btn-primary btn-sm">Corriger</Link>
+                <Link to={`${base}/corrections`} className="btn-primary btn-sm">Corriger</Link>
               </div>
             )}
           </div>

@@ -1,3 +1,4 @@
+import {useAdminConfirm} from '../../components/layout/AdminConfirm';
 import { useEffect, useMemo, useState } from 'react';
 import { Building2, CheckCircle2, RefreshCcw, ShieldCheck, Users, BookOpen, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -5,6 +6,7 @@ import { db } from '../../lib/db';
 
 const errorText = e => e?.message || String(e || 'Erreur inconnue');
 export default function TrainerAssignments() {
+  const ask=useAdminConfirm();
   const [companies, setCompanies] = useState([]);
   const [trainers, setTrainers] = useState([]);
   const [links, setLinks] = useState([]);
@@ -49,7 +51,7 @@ export default function TrainerAssignments() {
     if(busy) return;
     const present=links.some(a=>a.company_id===c.id&&a.trainer_id===t.id);
     if(t.company_id===c.id) return;
-    if(present && !window.confirm(`Retirer ${t.full_name||t.email} de ${c.name} ?`)) return;
+    if(present && !await ask(`Retirer ${t.full_name||t.email} de ${c.name} ?`)) return;
     setBusy(key);
     try {
       const {error}=present ? await db.from('trainer_companies').delete().eq('trainer_id',t.id).eq('company_id',c.id) : await db.from('trainer_companies').insert({trainer_id:t.id,company_id:c.id});
@@ -72,7 +74,7 @@ export default function TrainerAssignments() {
     } catch(e){toast.error(errorText(e));}finally{setBusy('');}
   };
   return <div className="space-y-6">
-    <div className="flex flex-wrap justify-between gap-3"><div><p className="eyebrow">Administration MCE</p><h1 className="page-title">Affectations des formateurs</h1><p className="page-subtitle">Plusieurs formateurs par entreprise et par formation, sans perdre les affectations existantes.</p></div><button className="btn-secondary" onClick={load} disabled={loading}><RefreshCcw className="h-4 w-4"/> Actualiser</button></div>
+    <div className="flex flex-wrap justify-between gap-3"><div><p className="eyebrow">Administration MCE</p><h1 className="page-title admin-page-title">Affectations des formateurs</h1><p className="page-subtitle">Plusieurs formateurs par entreprise et par formation, sans perdre les affectations existantes.</p></div><button className="btn-secondary" onClick={load} disabled={loading}><RefreshCcw className="h-4 w-4"/> Actualiser</button></div>
     {errors.length>0&&<div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><div className="flex items-center gap-2 font-bold"><AlertTriangle size={18}/> Certaines données n’ont pas pu être chargées</div>{errors.map((x,i)=><p key={i} className="mt-1 break-words">{x}</p>)}</div>}
     {!courseLinksAvailable&&<div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-slate-700"><p className="font-bold">Affectation par formation non activée</p><p>Exécutez d’abord le script SQL optionnel « ADMIN_V2_FORMATEURS_PAR_FORMATION.sql » dans Supabase, puis actualisez. Les affectations par entreprise fonctionnent déjà sans ce script.</p></div>}
     <div className="flex gap-3 rounded-xl border border-sky-100 bg-sky-50 p-4 text-sm text-slate-700"><ShieldCheck className="h-5 w-5 shrink-0"/><span>Le rattachement par formation indique les formateurs responsables. Il ne restreint pas encore les droits du formateur déjà autorisé sur l’entreprise : ces droits existants sont conservés.</span></div>

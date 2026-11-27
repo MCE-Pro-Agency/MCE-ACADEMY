@@ -1,3 +1,4 @@
+import {useLocation} from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { CalendarClock, FolderOpen, Video, Info, GraduationCap, BookOpen, Search, Layers, ChevronRight, ArrowRight, Users, KeyRound, Target, Ear, Scale, Star, UserCheck, MessageSquare, Clock, Compass, TrendingUp, HeartHandshake, Lightbulb, Eye, MessagesSquare, CalendarDays, Mic, Quote, Leaf, ClipboardCheck, FileText } from 'lucide-react';
 import { MEMOS, THEMES } from '../../data/ressources';
@@ -20,10 +21,11 @@ function memoStyle(m) {
   return colors[m.id==='M04'?'green':m.id==='M05'?'gold':m.id==='M06'?'purple':m.module==='comm'||m.module==='hyg'?'green':m.module==='reun'?'gold':m.module==='parole'?'purple':'blue'];
 }
 function Shortcut({ item }) {
+  const admin=useLocation().pathname.startsWith('/admin/');
   const Icon = item.icon;
   const contents = <><div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${item.tone}`}><Icon className="h-6 w-6"/></div><div className="min-w-0 flex-1"><h2 className="font-bold text-navy-900">{item.title}</h2><p className="mt-1 text-xs leading-relaxed text-slate-600">{item.text}</p></div>{item.to && <ChevronRight className="h-5 w-5 shrink-0 text-brand-600"/>}</>;
   const cls = 'flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card';
-  return item.to ? <Link to={item.to} className={`${cls} transition hover:border-brand-300 hover:shadow-lift`}>{contents}</Link> : <div className={cls}>{contents}</div>;
+  return item.to ? <Link to={admin?item.to.replace('/formateur/','/admin/'):item.to} className={`${cls} transition hover:border-brand-300 hover:shadow-lift`}>{contents}</Link> : <div className={cls}>{contents}</div>;
 }
 function LibraryBanner() {
   return <section className="relative isolate overflow-hidden rounded-2xl bg-navy-900 px-5 py-6 text-white shadow-card sm:px-7">

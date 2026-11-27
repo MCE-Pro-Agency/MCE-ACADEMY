@@ -1,3 +1,4 @@
+import {useAdminConfirm} from '../../components/layout/AdminConfirm';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -9,18 +10,22 @@ import { Badge, EmptyState, Field, Modal, PageLoader, Spinner } from '../../comp
 import { timeAgo } from '../../lib/utils';
 
 export default function Companies() {
-  const { setActiveCompanyId } = useAuth();
+  const ask=useAdminConfirm();
+  const { setActiveCompanyId, authorizedCompanies, refreshCompanies } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [items, setItems] = useState(null);
   const [search, setSearch] = useState('');
+  const [status,setStatus]=useState(''); const [selected,setSelected]=useState([]); const [busy,setBusy]=useState(false); const [loadError,setLoadError]=useState('');
   const [modal, setModal] = useState(null); // 'new' | company
 
   const load = async () => {
-    const [{ data: c }, { data: o }] = await Promise.all([
+    const [{ data: c, error }, { data: o, error: statsError }] = await Promise.all([
       db.from('companies').select('*').order('name'),
       db.rpc('companies_overview'),
     ]);
+    if(error){setLoadError(error.message);setItems([]);return;}
+    setLoadError(statsError ? `Statistiques indisponibles : ${statsError.message}` : '');
     const ov = Object.fromEntries((o || []).map((r) => [r.company_id, r]));
     setItems((c || []).map((x) => ({ ...x, stats: ov[x.id] || {} })));
   };
@@ -30,44 +35,62 @@ export default function Companies() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openSpace = (c) => {
-    setActiveCompanyId(c.id);
-    navigate('/formateur');
+    
+    
+    navigate(`/admin/entreprises/${c.id}`);
   };
 
-  const toggleActive = async (c) => {
-    const { error } = await db.from('companies').update({ is_active: !c.is_active }).eq('id', c.id);
-    if (error) return toast.error(error.message);
-    load();
+  const changeStatus = async (ids, active) => {
+    if (!ids.length || busy || !await ask(`${active?'Réactiver':'Suspendre'} ${ids.length} entreprise(s) ? Les données sont conservées.`)) return;
+    setBusy(true);
+    try {
+      const {data,error}=await db.from('companies').update({is_active:active}).in('id',ids).select('id');
+      if(error) throw error;
+      if(data?.length!==ids.length) throw new Error('Certaines entreprises n’ont pas été modifiées. Vérifiez les droits.');
+      toast.success('Statut mis à jour'); setSelected([]); refreshCompanies();
+    } catch(e){toast.error(e.message);} finally {await load();setBusy(false);}
   };
+  const toggleActive = c => changeStatus([c.id],!c.is_active);
 
   const remove = async (c) => {
-    const typed = prompt(`Cette action supprime l’entreprise, ses cours ET les comptes de tous ses utilisateurs.\nTapez le nom de l’entreprise pour confirmer : ${c.name}`);
-    if (typed !== c.name) return;
+    if (busy || !await ask(`Suppression définitive : l’entreprise, ses cours et les comptes rattachés peuvent être supprimés. Pour préserver les historiques, utilisez plutôt la suspension.`,c.name)) return;
+    setBusy(true);
     try {
+      const checks=await Promise.all([db.from('profiles').select('id',{count:'exact',head:true}).eq('company_id',c.id),db.from('courses').select('id',{count:'exact',head:true}).eq('company_id',c.id),db.from('trainer_companies').select('trainer_id',{count:'exact',head:true}).eq('company_id',c.id)]);
+      if(checks.some(x=>x.error||x.count==null)) throw new Error('Impossible de vérifier les données associées. Suppression annulée.');
+      if(checks.some(x=>x.count>0)) throw new Error('Cette entreprise contient des comptes, formations ou affectations. Suspendez-la pour conserver ses données.');
       const res = await api(`/companies/${c.id}`, { method: 'DELETE' });
       toast.success(`Entreprise supprimée (${res.deleted_users} comptes)`);
-      load();
+      refreshCompanies(); load();
     } catch (e) {
       toast.error(e.message);
-    }
+    } finally {setBusy(false);}
   };
 
   if (!items) return <PageLoader />;
-  const filtered = items.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = items.filter(c => `${c.name} ${c.sector||''}`.toLowerCase().includes(search.toLowerCase()) && (!status || c.is_active === (status==='active')));
+  const visibleIds=filtered.map(c=>c.id); const chosen=selected.filter(id=>visibleIds.includes(id));
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="page-title">Entreprises</h1>
+          <h1 className="page-title admin-page-title">Entreprises clientes</h1>
           <p className="page-subtitle">Chaque entreprise dispose de son espace : cours, modules, formateurs et apprenants.</p>
         </div>
         <button onClick={() => setModal('new')} className="btn-primary"><Plus className="h-4 w-4" /> Nouvelle entreprise</button>
       </div>
 
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">{[[items.length,'Entreprises'],[items.filter(c=>c.is_active).length,'Actives'],[items.filter(c=>!c.is_active).length,'Suspendues']].map(([n,label])=><div key={label} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 sm:p-5"><p className="text-2xl font-extrabold text-navy-900">{n}</p><p className="break-words text-xs text-slate-500">{label}</p></div>)}</div>
+      {loadError&&<p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{loadError} <button onClick={load} className="underline">Réessayer</button></p>}
+      <div className="card flex flex-wrap items-center gap-2 p-3">
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={visibleIds.length>0&&chosen.length===visibleIds.length} onChange={e=>setSelected(e.target.checked?visibleIds:[])} /> Tout sélectionner ({chosen.length})</label>
+        <button className="btn-secondary btn-sm" disabled={busy||!chosen.length} onClick={()=>changeStatus(chosen,false)}>Suspendre</button><button className="btn-secondary btn-sm" disabled={busy||!chosen.length} onClick={()=>changeStatus(chosen,true)}>Réactiver</button>
+        <select aria-label="Filtrer par statut" className="input sm:w-auto" value={status} onChange={e=>{setStatus(e.target.value);setSelected([])}}><option value="">Tous les statuts</option><option value="active">Actives</option><option value="inactive">Suspendues</option></select>
+      </div>
       <div className="relative max-w-md">
         <Search className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-        <input className="input pl-10" placeholder="Rechercher une entreprise…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input className="input pl-10" placeholder="Rechercher une entreprise…" value={search} onChange={(e) => {setSearch(e.target.value);setSelected([])}} />
       </div>
 
       {filtered.length === 0 ? (
@@ -76,7 +99,8 @@ export default function Companies() {
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((c) => (
             <div key={c.id} className={`card flex flex-col p-5 ${!c.is_active ? 'opacity-60' : ''}`}>
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-2">
+                <input type="checkbox" aria-label={`Sélectionner ${c.name}`} checked={selected.includes(c.id)} onChange={e=>setSelected(old=>e.target.checked?[...old,c.id]:old.filter(id=>id!==c.id))} className="mt-4 shrink-0"/>
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-navy-800 text-lg font-bold text-white">
                   {c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full bg-white object-contain" /> : c.name[0]}
                 </div>
@@ -87,26 +111,26 @@ export default function Companies() {
                 {c.is_active ? <Badge tone="green">Active</Badge> : <Badge tone="red">Suspendue</Badge>}
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-slate-50 py-2"><p className="font-bold text-navy-900">{c.stats.learners ?? 0}{c.max_learners ? <span className="text-xs font-normal text-slate-400">/{c.max_learners}</span> : null}</p><p className="flex items-center justify-center gap-1 text-[11px] text-slate-500"><Users className="h-3 w-3" /> apprenants</p></div>
-                <div className="rounded-xl bg-slate-50 py-2"><p className="font-bold text-navy-900">{c.stats.courses ?? 0}</p><p className="flex items-center justify-center gap-1 text-[11px] text-slate-500"><GraduationCap className="h-3 w-3" /> cours</p></div>
-                <div className="rounded-xl bg-slate-50 py-2"><p className="font-bold text-navy-900">{c.stats.total_hours ?? 0} h</p><p className="flex items-center justify-center gap-1 text-[11px] text-slate-500"><Clock className="h-3 w-3" /> formation</p></div>
+                <div className="rounded-xl bg-slate-50 py-2"><p className="font-bold text-navy-900">{c.stats.learners ?? '—'}{c.max_learners ? <span className="text-xs font-normal text-slate-400">/{c.max_learners}</span> : null}</p><p className="flex items-center justify-center gap-1 text-[11px] text-slate-500"><Users className="h-3 w-3" /> apprenants</p></div>
+                <div className="rounded-xl bg-slate-50 py-2"><p className="font-bold text-navy-900">{c.stats.courses ?? '—'}</p><p className="flex items-center justify-center gap-1 text-[11px] text-slate-500"><GraduationCap className="h-3 w-3" /> cours</p></div>
+                <div className="rounded-xl bg-slate-50 py-2"><p className="font-bold text-navy-900">{c.stats.total_hours ?? '—'} h</p><p className="flex items-center justify-center gap-1 text-[11px] text-slate-500"><Clock className="h-3 w-3" /> formation</p></div>
               </div>
               <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">Code d’inscription : <span className="font-mono font-semibold">{c.join_code || 'Non défini'}</span></p>
-              <p className="mt-3 text-xs text-slate-400">{c.stats.trainers ?? 0} formateur(s) · dernière activité {timeAgo(c.stats.last_activity).toLowerCase()}</p>
-              <div className="mt-auto flex items-center justify-between gap-2 pt-5">
+              <p className="mt-3 text-xs text-slate-400">{c.stats.trainers ?? '—'} formateur(s) · dernière activité {timeAgo(c.stats.last_activity).toLowerCase()}</p>
+              <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-5">
                 <div className="flex">
                   <button onClick={() => setModal(c)} className="btn-ghost btn-sm" title="Modifier"><Pencil className="h-4 w-4" /></button>
                   <button onClick={() => toggleActive(c)} className="btn-ghost btn-sm" title={c.is_active ? 'Suspendre' : 'Réactiver'}><Power className="h-4 w-4" /></button>
                   <button onClick={() => remove(c)} className="btn-ghost btn-sm text-red-500 hover:bg-red-50" title="Supprimer"><Trash2 className="h-4 w-4" /></button>
                 </div>
-                <button onClick={() => openSpace(c)} className="btn-primary btn-sm">Ouvrir l’espace <ArrowRight className="h-3.5 w-3.5" /></button>
+                <button onClick={() => openSpace(c)} className="btn-primary btn-sm">Voir la fiche <ArrowRight className="h-3.5 w-3.5" /></button>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {modal && <CompanyModal company={modal === 'new' ? null : modal} onClose={() => setModal(null)} onSaved={load} />}
+      {modal && <CompanyModal company={modal === 'new' ? null : modal} onClose={() => setModal(null)} onSaved={()=>{refreshCompanies();load();}} />}
     </div>
   );
 }
@@ -129,17 +153,19 @@ function CompanyModal({ company, onClose, onSaved }) {
     setSaving(true);
     try {
       if (isNew) {
-        const res = await api('/companies', {
-          method: 'POST',
-          body: { ...form, max_learners: Number(form.max_learners) || null, trainer: trainer.email ? trainer : undefined },
-        });
-        toast.success('Entreprise créée');
-        onSaved();
-        if (res.trainer?.error) toast.error(`Formateur : ${res.trainer.error}`);
-        if (res.trainer?.profile) setResult({ email: res.trainer.profile.email });
-        else onClose();
+        const name=form.name.trim(); if(!name) throw new Error('Le nom est obligatoire.');
+        const slugBase=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'entreprise';
+        const slug=`${slugBase}-${crypto.randomUUID().slice(0,8)}`;
+        const join_code=Array.from(crypto.getRandomValues(new Uint8Array(12)), b=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b%32]).join('');
+        const {data:created,error}=await db.from('companies').insert({name,slug,join_code,sector:form.sector.trim()||null,contact_email:form.contact_email.trim()||null,max_learners:Number(form.max_learners)||null}).select('id,name').single();
+        if(error) throw error;
+        toast.success('Entreprise créée'); onSaved();
+        if(trainer.email){
+          try {await api('/users',{method:'POST',body:{full_name:trainer.full_name.trim(),email:trainer.email.trim(),role:'trainer',company_id:created.id,is_active:true}});setResult({email:trainer.email});}
+          catch(e){toast.error(`Entreprise créée. Invitation non confirmée : ${e.message}`);setResult({error:e.message});}
+        } else onClose();
       } else {
-        if (!/^[A-Z0-9_-]{6,32}$/.test(form.join_code.trim().toUpperCase())) throw new Error('Le code doit contenir 6 à 32 caractères (lettres, chiffres, _ ou -).');
+        if (!/^[A-Z0-9_-]{10,32}$/.test(form.join_code.trim().toUpperCase())) throw new Error('Le code doit contenir 10 à 32 caractères (lettres, chiffres, _ ou -).');
         const { error } = await db.from('companies').update({ ...form, join_code:form.join_code.trim().toUpperCase(), max_learners: Number(form.max_learners) || null }).eq('id', company.id);
         if (error) throw error;
         toast.success('Entreprise mise à jour');
@@ -158,7 +184,7 @@ function CompanyModal({ company, onClose, onSaved }) {
       {result ? (
         <div className="space-y-4">
           <p className="text-sm text-navy-800">L’espace de l’entreprise est prêt.</p>
-          <p className="rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900">Une invitation a été envoyée à <b>{result.email}</b>. Le formateur confirmera son adresse et choisira lui-même son mot de passe en ouvrant le lien.</p>
+          {result.error ? <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm">Invitation non confirmée : {result.error}. Vérifiez les utilisateurs avant de réessayer.</p> : <p className="rounded-xl bg-sky-50 p-3 text-sm">Invitation demandée pour {result.email}.</p>}
           <div className="flex justify-end"><button className="btn-primary" onClick={onClose}>Terminer</button></div>
         </div>
       ) : (

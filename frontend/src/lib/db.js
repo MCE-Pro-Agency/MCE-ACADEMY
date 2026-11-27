@@ -31,7 +31,9 @@ export async function apiRequest(path, { method = 'GET', body } = {}) {
   } catch {
     return { error: { message: 'Impossible de joindre le serveur MCE Academy (API Node.js). Est-il démarré ?' } };
   }
-  const json = await res.json().catch(() => ({}));
+  let json;
+  try { json = await res.json(); } catch { return { error: { message: `Réponse API non JSON (HTTP ${res.status}). Vérifiez le serveur et VITE_API_URL.` } }; }
+  if (!json || typeof json !== 'object') return { error: { message: 'Réponse API invalide.' } };
   if (!res.ok) return { error: { message: json.error || `Erreur ${res.status}` } };
   return json;
 }

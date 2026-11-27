@@ -1,3 +1,4 @@
+import { useLocation as useWorkspaceLocation } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -18,11 +19,12 @@ const contentCount = (module, type) => (module.lessons || []).filter(l => type =
 const isFollowup = (m) => /\bJ\s*\+\s*(7|14|21|30)\b/i.test(m.title);
 
 function ModuleCard({ module, courseId, index, followup, onPlan }) {
+  const base = useWorkspaceLocation().pathname.startsWith('/admin/') ? '/admin' : '/formateur';
   const Icon = followup ? CalendarDays : MAIN_ICONS[index % MAIN_ICONS.length];
   const lessons = module.lessons || [];
   return (
     <div className="flex min-w-0 flex-col gap-2">
-    <Link to={`/formateur/cours/${courseId}/modules/${module.id}`}
+    <Link to={`${base}/cours/${courseId}/modules/${module.id}`}
       className="group flex min-w-0 h-full flex-col rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-sky-300 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-sky-100">
       <div className="flex items-start justify-between gap-3">
         <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700"><Icon className="h-6 w-6" /></span>
@@ -46,6 +48,7 @@ function ModuleCard({ module, courseId, index, followup, onPlan }) {
 }
 
 export default function TrainerCourses() {
+  const base = useWorkspaceLocation().pathname.startsWith('/admin/') ? '/admin' : '/formateur';
   const { activeCompanyId, profile } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -91,14 +94,14 @@ export default function TrainerCourses() {
     e.preventDefault(); setCreating(true);
     const {data,error:e2} = await db.from('courses').insert({...form,company_id:activeCompanyId,created_by:profile.id}).select().single();
     if (e2) toast.error(e2.message);
-    else { await db.from('modules').insert({course_id:data.id,title:'Module 1',position:0}); toast.success('Formation créée en brouillon'); setModal(false); navigate(`/formateur/cours/${data.id}`); }
+    else { await db.from('modules').insert({course_id:data.id,title:'Module 1',position:0}); toast.success('Formation créée en brouillon'); setModal(false); navigate(`${base}/cours/${data.id}`); }
     setCreating(false);
   };
   if (loading) return <PageLoader />;
   return <div className="min-w-0 space-y-5 pb-10 sm:space-y-7">
     <header className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
       <div><p className="text-xs font-extrabold uppercase tracking-[.2em] text-sky-700">MCE Academy · Pilotage pédagogique</p><h1 className="mt-2 text-3xl font-extrabold tracking-tight text-[#0b2341]">Mes formations</h1><p className="mt-2 text-sm text-slate-500">Une carte par module. Un espace de travail clair pour chaque séance.</p></div>
-      <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:flex sm:shrink-0"><button type="button" disabled={!courseId || !modules.length} onClick={()=>setCalendarOpen(true)} className="btn-secondary min-h-11"><CalendarDays className="h-4 w-4 shrink-0"/> Planifier</button><button onClick={()=>setModal(true)} className="btn-primary min-h-11"><Plus className="h-4 w-4 shrink-0" /> Nouvelle formation</button></div>
+      <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:flex sm:shrink-0"><button type="button" disabled={!courseId || !modules.length} onClick={()=>setCalendarOpen(true)} className="btn-secondary min-h-11"><CalendarDays className="h-4 w-4 shrink-0"/> Planifier</button><button onClick={()=>base==='/admin'?navigate('/admin/studio'):setModal(true)} className="btn-primary min-h-11"><Plus className="h-4 w-4 shrink-0" /> Nouvelle formation</button></div>
     </header>
     {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">Impossible de charger les données : {error}</div>}
     {courses.length === 0 ? <EmptyState icon={GraduationCap} title="Aucune formation" description="Le programme importé apparaîtra ici une fois rattaché à cette entreprise." /> : <>
@@ -106,7 +109,7 @@ export default function TrainerCourses() {
       <section className="overflow-hidden rounded-[28px] bg-[#102941] p-4 text-white sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-sky-300">Programme sélectionné</p><h2 className="mt-2 text-2xl font-extrabold">{course?.title}</h2><p className="mt-2 max-w-2xl text-sm text-slate-300">{course?.subtitle || 'Parcours immersif · théorie courte, pratique et débriefing.'}</p></div><span className={`rounded-full px-3 py-1.5 text-xs font-bold ${course?.is_published?'bg-emerald-200 text-emerald-900':'bg-amber-200 text-amber-900'}`}>{course?.is_published?'Publié':'Brouillon · non publié'}</span></div>
         <div className="mt-6 flex flex-wrap gap-3"><span className="rounded-xl bg-white/10 px-4 py-2 text-sm"><strong>{main.length}</strong> modules principaux</span><span className="rounded-xl bg-white/10 px-4 py-2 text-sm"><strong>{followups.length}</strong> étapes de suivi</span><span className="rounded-xl bg-white/10 px-4 py-2 text-sm"><strong>{modules.reduce((a,m)=>a+m.lessons.length,0)}</strong> éléments pédagogiques</span></div>
-        <div className="mt-5"><Link to={`/formateur/cours/${courseId}`} className="inline-flex items-center gap-2 text-sm font-bold text-sky-200 hover:text-white">Modifier le programme général <ArrowRight className="h-4 w-4" /></Link></div>
+        <div className="mt-5"><Link to={`${base}/cours/${courseId}`} className="inline-flex items-center gap-2 text-sm font-bold text-sky-200 hover:text-white">Modifier le programme général <ArrowRight className="h-4 w-4" /></Link></div>
       </section>
       
       <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5"><Search className="h-5 w-5 text-slate-400" /><input className="min-w-0 w-full border-0 bg-transparent py-1 text-sm outline-none" placeholder="Rechercher un module, un thème..." value={query} onChange={e=>setQuery(e.target.value)} /></div>

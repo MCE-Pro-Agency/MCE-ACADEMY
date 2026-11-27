@@ -1,3 +1,4 @@
+import {useAdminConfirm} from './layout/AdminConfirm';
 /* Code d'inscription de l'entreprise (formateur / admin) : à transmettre aux apprenants
    avec le lien d'inscription. Chaque apprenant inscrit avec ce code est rattaché à l'entreprise. */
 import { useEffect, useState } from 'react';
@@ -8,6 +9,7 @@ import { db } from '../lib/db';
 const newCode = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('');
 
 export default function JoinCodeCard({ companyId }) {
+  const ask=useAdminConfirm();
   const [company, setCompany] = useState(null);
 
   useEffect(() => {
@@ -21,7 +23,7 @@ export default function JoinCodeCard({ companyId }) {
     toast.success(msg);
   };
   const regenerate = async () => {
-    if (!confirm('Créer un nouveau code ? L’ancien code et l’ancien lien ne fonctionneront plus.')) return;
+    if (!await ask('Créer un nouveau code ? L’ancien code et l’ancien lien ne fonctionneront plus.')) return;
     const code = newCode();
     const { error } = await db.from('companies').update({ join_code: code }).eq('id', company.id);
     if (error) return toast.error(error.message);

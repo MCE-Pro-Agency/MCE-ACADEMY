@@ -1,3 +1,4 @@
+import {useAdminConfirm} from '../../components/layout/AdminConfirm';
 import RichEditor from '../../components/RichEditor';
 import { Markdown } from '../../components/ui';
 import { isRich } from '../../lib/richContent';
@@ -10,6 +11,7 @@ import { EmptyState, Field, PageLoader } from '../../components/ui';
 import { formatDateTime } from '../../lib/utils';
 
 export default function Announcements() {
+  const ask=useAdminConfirm();
   const { activeCompanyId, profile } = useAuth();
   const [items, setItems] = useState(null);
   const [form, setForm] = useState({ title: '', body: '' });
@@ -36,7 +38,7 @@ export default function Announcements() {
   };
 
   const remove = async (id) => {
-    if (!confirm('Supprimer cette annonce ?')) return;
+    if (!await ask('Supprimer cette annonce ?')) return;
     await db.from('announcements').delete().eq('id', id);
     load();
   };

@@ -1,3 +1,4 @@
+import AdminConfirm from './AdminConfirm';
 import { useEffect, useState } from 'react';
 import { NavLink as RouterNavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -10,6 +11,7 @@ import { db } from '../../lib/db';
 import { cn, ROLE_LABELS } from '../../lib/utils';
 import { Avatar } from '../ui';
 import Logo from './Logo';
+import './workspace-responsive.css';
 
 /* Menus par espace, regroupÃ©s en rubriques explicites */
 // Les onglets ferment dans Supabase restent visibles et non cliquables pour l'apprenant.
@@ -18,7 +20,10 @@ function NavLink({ to, className, children, onClick, ...props }) {
   const { company, isLearner } = useAuth();
   const tab = typeof to === 'string' ? LEARNER_TABS.find(x => x.to === to) : null;
   const locked = Boolean(isLearner && tab && tab.key !== 'parcours' && !isTabOpen(company, tab.key));
+  const location = useLocation();
+  const aliases = {'/admin/programme':['/admin/cours','/admin/studio'], '/admin/utilisateurs':['/admin/affectations','/admin/apprenants'], '/admin/exercices':['/admin/corrections','/admin/activites'], '/admin/documents':['/admin/annonces'], '/admin/performances':['/admin/rapports'], '/admin/acces':['/admin/parametres']};
   const styled = (state) => {
+    if (aliases[to]?.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))) state = {...state,isActive:true};
     const base = typeof className === 'function' ? className(state) : (className || '');
     return locked ? base + ' opacity-50 cursor-not-allowed' : base;
   };
@@ -57,20 +62,11 @@ const NAV = {
     ] },
   ],
   admin: [
-    { title: 'Pilotage', items: [{ to: '/admin', label: "Vue d'ensemble", icon: LayoutDashboard, end: true }] },
-    { title: 'Organisation', items: [
-      { to: '/admin/entreprises', label: 'Entreprises clientes', icon: Building2 },
-        { to: '/admin/gestion-entreprises', label: 'Gestion par entreprise', icon: Building2 },
-      { to: '/admin/affectations', label: 'Affectations formateurs', icon: UserCog },
-      { to: '/admin/formateurs', label: 'Formateurs', icon: UserCog },
-      { to: '/admin/apprenants', label: 'Apprenants', icon: Users },
-      { to: '/admin/utilisateurs', label: 'Tous les comptes', icon: ShieldCheck },
-    ] },
-    { title: 'Suivi pédagogique', items: [
-      { to: '/admin/programme', label: 'Programme & Evolution', icon: CalendarClock },
-      { to: '/admin/profils', label: 'Profils professionnels', icon: Brain },
-      { to: '/admin/documents', label: 'Documents', icon: FolderOpen },
-    ] },
+    { title: 'Pilotage', items: [{ to: '/admin', label: 'Tableau de bord', icon: LayoutDashboard, end: true }] },
+    { title: 'Organisation', items: [{ to: '/admin/entreprises', label: 'Entreprises clientes', icon: Building2 }, { to: '/admin/utilisateurs', label: 'Utilisateurs', icon: Users }] },
+    { title: 'Gestion pédagogique', items: [{ to: '/admin/programme', label: 'Formations & programmes', icon: GraduationCap }, { to: '/admin/exercices', label: 'Exercices & évaluations', icon: ClipboardCheck }, { to: '/admin/documents', label: 'Documents & annonces', icon: FolderOpen }] },
+    { title: 'Analyse & contrôle', items: [{ to: '/admin/performances', label: 'Performances & rapports', icon: Award }, { to: '/admin/profils', label: 'Profils professionnels', icon: Brain }] },
+    { title: 'Configuration', items: [{ to: '/admin/acces', label: 'Paramètres & accès', icon: ShieldCheck }] },
   ],
 };
 
@@ -95,7 +91,7 @@ export default function AppLayout({ area }) {
   };
 
   const Sidebar = (
-    <aside className="flex h-full w-72 flex-col bg-navy-900 text-navy-100">
+    <aside className="flex h-full w-72 max-w-[85vw] flex-col bg-navy-900 text-navy-100">
       <div className="flex items-center justify-between px-5 py-5">
         <Logo to="/" dark />
         <button className="rounded-lg p-1 text-navy-200 hover:bg-navy-800 lg:hidden" onClick={() => setOpen(false)}>
@@ -151,7 +147,7 @@ export default function AppLayout({ area }) {
           </div>
         ))}
 
-        {(isAdmin || isTrainer) && (
+        {!isAdmin && isTrainer && (
           <div className="mt-3 border-t border-navy-800 pt-3">
             <p className="px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-navy-400">Raccourcis</p>
             {isAdmin && area !== 'admin' && (
@@ -187,7 +183,7 @@ export default function AppLayout({ area }) {
   );
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen mce-workspace mce-workspace-${area}`}>
       {/* Sidebar desktop */}
       <div className="fixed inset-y-0 left-0 z-30 hidden lg:block">{Sidebar}</div>
 
@@ -195,19 +191,19 @@ export default function AppLayout({ area }) {
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-navy-950/50" onClick={() => setOpen(false)} />
-          <div className="relative h-full animate-fade-in">{Sidebar}</div>
+          <div className="relative h-full w-fit max-w-full animate-fade-in">{Sidebar}</div>
         </div>
       )}
 
-      <div className="lg:pl-72">
+      <div className="min-w-0 lg:pl-72">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200/70 bg-white/85 px-4 backdrop-blur sm:px-8 lg:hidden">
           <button onClick={() => setOpen(true)} className="rounded-lg p-2 text-navy-800 hover:bg-slate-100">
             <Menu className="h-5 w-5" />
           </button>
           <Logo to="/" />
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
-          <Outlet key={area === 'trainer' ? (activeCompanyId || 'no-company') : area} />
+        <main className="mce-workspace-main mx-auto min-w-0 max-w-7xl px-3 py-4 sm:px-8 sm:py-8">
+          {area==='admin'?<AdminConfirm><Outlet /></AdminConfirm>:<Outlet key={area === 'trainer' ? (activeCompanyId || 'no-company') : area} />}
         </main>
       </div>
     </div>

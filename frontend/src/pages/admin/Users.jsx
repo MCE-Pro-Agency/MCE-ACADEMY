@@ -1,6 +1,7 @@
+import {useAdminConfirm} from '../../components/layout/AdminConfirm';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Users as UsersIcon, UserPlus, Search, Pencil, Trash2, KeyRound, ShieldCheck, Building2, AlertTriangle, RefreshCcw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/db';
@@ -14,18 +15,22 @@ const ROLE_TONES = { admin: 'navy', trainer: 'brand', learner: 'slate' };
 const PAGE = {
   trainer: { title: 'Formateurs', subtitle: 'Les formateurs de chaque entreprise cliente : ils créent les cours et suivent leurs apprenants', button: 'Nouveau formateur' },
   learner: { title: 'Apprenants', subtitle: 'Tous les apprenants de la plateforme, toutes entreprises confondues', button: 'Nouvel apprenant' },
-  '': { title: 'Tous les comptes', subtitle: 'Administrateurs, formateurs et apprenants', button: 'Nouvel utilisateur' },
+  '': { title: 'Utilisateurs', subtitle: 'Administrateurs, formateurs et apprenants', button: 'Nouvel utilisateur' },
 };
 
 export default function Users({ fixedRole = '' }) {
+  const ask=useAdminConfirm();
   const { profile: me } = useAuth();
   const [users, setUsers] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [role, setRole] = useState(fixedRole);
-  useEffect(() => setRole(fixedRole), [fixedRole]);
+  const [params]=useSearchParams();
+  const roleParam=params.get('role');
+  const [role,setRole]=useState(fixedRole);
+  useEffect(()=>setRole(fixedRole || (['trainer','learner','admin'].includes(roleParam)?roleParam:'')),[fixedRole,roleParam]);
+  const [statusFilter,setStatusFilter]=useState('');
   const page = PAGE[fixedRole];
   const [companyId, setCompanyId] = useState('');
   const [modal, setModal] = useState(null);
@@ -60,15 +65,16 @@ export default function Users({ fixedRole = '' }) {
     () =>
       (users || []).filter((u) => {
         if (role && u.role !== role) return false;
+        if(statusFilter && u.is_active !== (statusFilter==='active')) return false;
         if (companyId && u.company_id !== companyId) return false;
         const s = search.toLowerCase();
         return !s || `${u.full_name} ${u.email}`.toLowerCase().includes(s);
       }),
-    [users, search, role, companyId]
+    [users, search, role, companyId,statusFilter]
   );
 
   const remove = async (u) => {
-    if (!confirm(`Supprimer définitivement le compte de ${u.full_name} ?`)) return;
+    if (!await ask(`Supprimer définitivement le compte de ${u.full_name} ?`)) return;
     try {
       await api(`/users/${u.id}`, { method: 'DELETE' });
       toast.success('Compte supprimé');
@@ -79,7 +85,7 @@ export default function Users({ fixedRole = '' }) {
   };
 
   const reset = async (u) => {
-    if (!confirm(`Envoyer à ${u.email} un e-mail pour choisir un nouveau mot de passe ?`)) return;
+    if (!await ask(`Envoyer à ${u.email} un e-mail pour choisir un nouveau mot de passe ?`)) return;
     try {
       await api(`/users/${u.id}/reset-password`, { method: 'POST' });
       toast.success(`E-mail de réinitialisation envoyé à ${u.email}.`);
@@ -95,7 +101,7 @@ export default function Users({ fixedRole = '' }) {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="eyebrow">Organisation</p>
-          <h1 className="page-title">{page.title}</h1>
+          <h1 className="page-title admin-page-title">{page.title}</h1>
           <p className="page-subtitle">{page.subtitle} · {filtered.length} compte(s).</p>
         </div>
         <button onClick={() => setModal('new')} className="btn-primary"><UserPlus className="h-4 w-4" /> {page.button}</button>
@@ -111,6 +117,7 @@ export default function Users({ fixedRole = '' }) {
           <option value="">Tous les rôles</option>
           {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>}
+        <select aria-label="Statut du compte" className="input sm:w-40" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="">Tous les statuts</option><option value="active">Activés</option><option value="inactive">Désactivés</option></select>
         <select className="input sm:w-56" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
           <option value="">Toutes les entreprises</option>
           {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -174,7 +181,7 @@ export default function Users({ fixedRole = '' }) {
       </div>
 
       {statusError && <p className="text-xs text-slate-500">Statuts des comptes indisponibles : {statusError}</p>}
-      {modal && <UserModal user={modal === 'new' ? null : modal} defaultRole={fixedRole} companies={companies} isSelf={modal?.id === me.id} onClose={() => setModal(null)} onSaved={() => { load(); reloadStatuses(); }} />}
+      {modal && <UserModal user={modal === 'new' ? null : modal} defaultRole={role} companies={companies} isSelf={modal?.id === me.id} onClose={() => setModal(null)} onSaved={() => { load(); reloadStatuses(); }} />}
     </div>
   );
 }

@@ -1,4 +1,3 @@
-
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { db } from '../lib/db';
 import { syncStores, clearStores } from '../lib/stores';
@@ -14,6 +13,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [selectedCompanyId, setSelectedCompanyId] = useState(() => localStorage.getItem(ACTIVE_COMPANY_KEY));
   const [authorizedCompanies, setAuthorizedCompanies] = useState([]);
+  const [companiesRevision,setCompaniesRevision]=useState(0);
   const [companiesLoading, setCompaniesLoading] = useState(true);
   const activeLessonRef = useRef(null);
 
@@ -182,7 +182,7 @@ export function AuthProvider({ children }) {
     profile?.id,
     profile?.role,
     profile?.company_id,
-    company?.id
+    company?.id, companiesRevision
   ]);
 
   // Sélection de l'entreprise active.
@@ -330,6 +330,7 @@ export function AuthProvider({ children }) {
       setActiveCompanyId,
       signIn,
       signOut,
+      refreshCompanies: () => setCompaniesRevision(n=>n+1),
       refreshProfile: () => loadProfile(session?.user?.id),
       setActiveLesson,
     }),

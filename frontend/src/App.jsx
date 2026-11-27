@@ -1,3 +1,5 @@
+import Studio from './pages/admin/Studio';
+import AdminWorkspace from './pages/admin/AdminWorkspace';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/layout/AppLayout';
@@ -35,6 +37,7 @@ import Companies from './pages/admin/Companies';
 import AdminCompanyHubV1 from './pages/admin/AdminCompanyHubV1';
 import TrainerAssignments from './pages/admin/TrainerAssignments';
 import Users from './pages/admin/Users';
+import AdminProgramme from './pages/admin/Programme';
 
 export default function App() {
   return (
@@ -48,7 +51,7 @@ export default function App() {
       {/* Espace apprenant : test de profil professionnel uniquement.
           Les formations, modules, programme et exercices sont dÃ©veloppÃ©s dans l'espace Formateur
           (version prÃ©cÃ©dente des pages apprenant : commit 4580c6d de la branche espace-apprenant). */}
-      <Route element={<ProtectedRoute roles={['learner', 'trainer', 'admin']} />}>
+      <Route element={<ProtectedRoute roles={['learner', 'trainer']} />}>
         <Route element={<AppLayout area="learner" />}>
           <Route path="/app" element={<Navigate to="/app/mon-profil" replace />} />
           <Route path="/app/mon-profil" element={<ProfilPro />} />
@@ -64,7 +67,7 @@ export default function App() {
       </Route>
 
       {/* Espace formateur : gestion de l'entreprise */}
-      <Route element={<ProtectedRoute roles={['trainer', 'admin']} needsCompany />}>
+      <Route element={<ProtectedRoute roles={['trainer']} needsCompany />}>
         <Route element={<AppLayout area="trainer" />}>
           <Route path="/formateur" element={<TrainerDashboard />} />
           <Route path="/formateur/apprenants" element={<Learners />} />
@@ -92,24 +95,32 @@ export default function App() {
         <Route element={<AppLayout area="admin" />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/entreprises" element={<Companies />} />
-          <Route path="/admin/gestion-entreprises" element={<AdminCompanyHubV1 />} />
-          <Route path="/admin/affectations" element={<TrainerAssignments />} />
-          <Route path="/admin/formateurs" element={<Users fixedRole="trainer" />} />
-          <Route path="/admin/apprenants" element={<Users fixedRole="learner" />} />
-          <Route path="/admin/utilisateurs" element={<Users />} />
+          <Route path="/admin/gestion-entreprises" element={<Navigate to="/admin/entreprises" replace />} />
+          <Route path="/admin/entreprises/:companyId" element={<AdminCompanyHubV1 />} />
+          <Route path="/admin/affectations" element={<AdminWorkspace group="users"><TrainerAssignments /></AdminWorkspace>} />
+          <Route path="/admin/formateurs" element={<Navigate to="/admin/utilisateurs?role=trainer" replace />} />
+          <Route path="/admin/apprenants" element={<Navigate to="/admin/utilisateurs?role=learner" replace />} />
+          <Route path="/admin/utilisateurs" element={<AdminWorkspace group="users"><Users /></AdminWorkspace>} />
+          <Route path="/admin/studio" element={<AdminWorkspace group="formations"><Studio /></AdminWorkspace>} />
+          <Route path="/admin/programme" element={<AdminWorkspace group="formations"><AdminProgramme /></AdminWorkspace>} />
           <Route path="/admin/profils" element={<ProfilsSuivi scope="admin" />} />
           <Route path="/admin/apprenants/:userId" element={<LearnerDetail base="/admin" />} />
+          <Route path="/admin/cours" element={<AdminWorkspace group="formations" scoped><TrainerCourses /></AdminWorkspace>} />
+          <Route path="/admin/cours/:courseId" element={<AdminWorkspace group="formations" scoped><CourseEditor /></AdminWorkspace>} />
+          <Route path="/admin/cours/:courseId/modules/:moduleId" element={<AdminWorkspace group="formations" scoped><TrainerModuleDetail /></AdminWorkspace>} />
+          <Route path="/admin/exercices" element={<AdminWorkspace group="evaluations" scoped><TrainerExercises /></AdminWorkspace>} />
+          <Route path="/admin/corrections" element={<AdminWorkspace group="evaluations" scoped><Submissions /></AdminWorkspace>} />
+          <Route path="/admin/activites" element={<AdminWorkspace group="evaluations" scoped><TrainerActivities /></AdminWorkspace>} />
+          <Route path="/admin/documents" element={<AdminWorkspace group="documents" scoped><TrainerDocuments /></AdminWorkspace>} />
+          <Route path="/admin/annonces" element={<AdminWorkspace group="documents" scoped><Announcements /></AdminWorkspace>} />
+          <Route path="/admin/performances" element={<AdminWorkspace group="reports" scoped><Performances /></AdminWorkspace>} />
+          <Route path="/admin/rapports" element={<AdminWorkspace group="reports" scoped><TrainerReports /></AdminWorkspace>} />
+          <Route path="/admin/acces" element={<AdminWorkspace group="settings" scoped><AccessManagement /></AdminWorkspace>} />
+          <Route path="/admin/parametres" element={<AdminWorkspace group="settings" scoped><CompanySettings /></AdminWorkspace>} />
           <Route path="/admin/profil" element={<Profile />} />
         </Route>
       </Route>
 
-      {/* Admin : vues qui nÃ©cessitent une entreprise sÃ©lectionnÃ©e */}
-      <Route element={<ProtectedRoute roles={['admin']} needsCompany />}>
-        <Route element={<AppLayout area="admin" />}>
-          <Route path="/admin/programme" element={<TrainerProgramme base="/admin" />} />
-          <Route path="/admin/documents" element={<TrainerDocuments />} />
-        </Route>
-      </Route>
 
       <Route path="/accueil" element={<Navigate to="/" replace />} />
       <Route path="*" element={<NotFound />} />

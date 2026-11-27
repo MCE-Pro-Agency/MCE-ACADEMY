@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Building2, Users, GraduationCap, UserPlus, RefreshCcw, Search, FileText, BookOpen, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { db } from '../../lib/db';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 
 // Admin V2 : vues par entreprise. Ne modifie ni les profils professionnels ni les contenus pedagogiques.
 const TABS = [
@@ -17,7 +17,8 @@ export default function AdminCompanyHubV1() {
   const [assignments, setAssignments] = useState([]);
   const [courses, setCourses] = useState([]);
   const [documents, setDocuments] = useState([]);
-  const [selected, setSelected] = useState('');
+  const { companyId } = useParams();
+  const [selected, setSelected] = useState(companyId || '');
   const [tab, setTab] = useState('overview');
   const [search, setSearch] = useState('');
   const [trainerId, setTrainerId] = useState('');
@@ -80,7 +81,7 @@ export default function AdminCompanyHubV1() {
   const mini = 'rounded-xl border border-slate-200 bg-slate-50 px-4 py-3';
   return <div className="space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><p className="text-sm font-bold uppercase tracking-widest text-sky-600">Administration MCE Academy</p><h1 className="text-3xl font-extrabold text-slate-900">Gestion par entreprise · V2</h1><p className="mt-1 text-sm text-slate-500">Comptes, formateurs, apprenants, formations et documents rattaches aux entreprises.</p></div>
+      <header className="admin-hero"><div><p className="text-xs font-bold uppercase tracking-widest text-sky-200">Administration MCE Academy</p><h1 className="mt-2 text-3xl font-extrabold">Fiche entreprise</h1><p className="mt-2 text-sm text-sky-100">Comptes, formations, affectations et documents.</p></div></header>
       <button type="button" onClick={load} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"><RefreshCcw size={16}/> Actualiser</button>
     </div>
     {errors.length > 0 && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><div className="mb-2 flex items-center gap-2 font-bold"><AlertCircle size={17}/> Certaines donnees ne sont pas accessibles</div>{errors.map((x,i) => <p key={i}>{x}</p>)}<p className="mt-2">Verifier les droits Supabase/RLS avant de conclure qu'une entreprise n'a pas de comptes.</p></div>}
@@ -98,12 +99,13 @@ export default function AdminCompanyHubV1() {
       {!companies.length && <p className="text-sm text-slate-500">{loading ? 'Chargement...' : 'Aucune entreprise visible avec les autorisations actuelles.'}</p>}
     </div>
     {current && <section className={panel}>
+      <div className="mb-4 flex flex-wrap gap-2"><Link className="btn-secondary" to="/admin/entreprises">Retour aux entreprises</Link><Link className="btn-secondary" to={`/admin/cours?company=${current.id}`}>Formations</Link><Link className="btn-secondary" to={`/admin/acces?company=${current.id}`}>Accès</Link><Link className="btn-secondary" to={`/admin/performances?company=${current.id}`}>Performances</Link></div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-widest text-slate-500">Entreprise selectionnee</p><h2 className="text-xl font-bold">{current.name}</h2></div><div className="flex items-center gap-2 text-xs text-slate-500"><CheckCircle2 size={15}/> Donnees filtrees par entreprise</div></div>
       <div role="tablist" aria-label="Informations entreprise" className="mb-5 flex flex-wrap gap-2">{TABS.map(([k,label])=><button key={k} role="tab" aria-selected={tab===k} onClick={()=>setTab(k)} className={'rounded-xl px-3 py-2 text-sm font-semibold '+(tab===k?'bg-sky-600 text-white':'bg-slate-100 text-slate-700 hover:bg-slate-200')}>{label}</button>)}</div>
       {tab==='overview' && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[[Users,'Comptes rattaches',members.length], [GraduationCap,'Formateurs affectes',trainers.length],[BookOpen,'Formations',companyCourses.length],[FileText,'Documents',companyDocs.length]].map(([Icon,label,n])=><div key={label} className={mini}><Icon size={19} className="mb-2 text-sky-600"/><p className="text-3xl font-bold">{n}</p><p className="text-xs text-slate-500">{label}</p></div>)}</div>}
       {['users','learners','trainers'].includes(tab) && <div><label className="mb-3 flex max-w-md items-center gap-2 rounded-xl border border-slate-200 px-3 py-2"><Search size={16}/><input className="w-full bg-transparent outline-none" placeholder="Chercher par nom, email ou role" value={search} onChange={e=>setSearch(e.target.value)}/></label><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{filtered(tab==='learners'?learners:tab==='trainers'?trainers:members).map(p=><div key={p.id} className={mini}><p className="break-words font-bold">{displayName(p)}</p><p className="break-all text-sm text-slate-600">{p.email || 'Email non renseigne'}</p><p className="mt-2 text-xs font-semibold text-sky-700">{roleName(p.role)}</p>{p.role==='learner'&&<Link className="mt-2 inline-block text-sm font-semibold text-sky-700 underline" to={'/admin/apprenants/'+p.id}>Voir le dossier apprenant</Link>}</div>)}</div>{!filtered(tab==='learners'?learners:tab==='trainers'?trainers:members).length && <p className="text-sm text-slate-500">Aucun resultat dans cette entreprise avec les criteres actuels.</p>}</div>}
       {tab==='assign' && <div className="space-y-4"><p className="text-sm text-slate-600">Plusieurs formateurs peuvent etre affectes a une meme entreprise. Les affectations existantes sont conservees.</p><form onSubmit={addTrainer} className="flex flex-wrap items-end gap-3"><label className="min-w-64 flex-1 text-sm font-semibold">Ajouter un formateur<select required value={trainerId} onChange={e=>setTrainerId(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2"><option value="">Choisir un compte formateur</option>{allTrainers.filter(p=>!assignedIds.has(String(p.id))).map(p=><option key={p.id} value={p.id}>{displayName(p)} — {p.email || p.id}</option>)}</select></label><button disabled={busy || !trainerId} type="submit" className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 font-bold text-white disabled:opacity-50"><UserPlus size={17}/>{busy?'Enregistrement...':'Affecter'}</button></form><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{trainers.map(p=><div key={p.id} className={mini}><p className="font-semibold">{displayName(p)}</p><p className="text-xs text-slate-500">{p.email || 'Compte formateur'}</p></div>)}</div>{!trainers.length && <p className="text-sm text-slate-500">Aucun formateur affecte visible.</p>}</div>}
-      {tab==='courses' && <div className="grid gap-3 sm:grid-cols-2">{companyCourses.map(c=><div key={c.id} className={mini}><BookOpen size={18} className="mb-2 text-sky-600"/><p className="font-bold">{c.title || c.name || 'Formation'}</p><p className="mt-1 text-xs text-slate-500">{c.is_published ? 'Publiée' : 'Brouillon'}</p><p className="mt-1 text-xs text-slate-500">Formation de {current.name}</p></div>)}</div>}
+      {tab==='courses' && <div className="grid gap-3 sm:grid-cols-2">{companyCourses.map(c=><div key={c.id} className={mini}><BookOpen size={18} className="mb-2 text-sky-600"/><p className="font-bold">{c.title || c.name || 'Formation'}</p><p className="mt-1 text-xs text-slate-500">{c.is_published ? 'Publiée' : 'Brouillon'}</p><Link className="mt-2 inline-block font-semibold text-sky-700" to={`/admin/cours/${c.id}`}>Gérer la formation →</Link></div>)}</div>}
       {tab==='documents' && <div className="grid gap-3 sm:grid-cols-2">{companyDocs.map(d=><div key={d.id} className={mini}><FileText size={18} className="mb-2 text-sky-600"/><p className="font-bold">{d.title || d.name || d.filename || 'Document'}</p><p className="mt-1 text-xs text-slate-500">{d.is_available ? 'Disponible' : 'Non publié'}</p><p className="mt-1 text-xs text-slate-500">Document rattache a {current.name}</p></div>)}</div>}
     </section>}
   </div>;
